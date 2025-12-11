@@ -301,6 +301,13 @@ export default function EditorPage() {
         }
     };
 
+    // Keep the URL in sync with the current code so users can copy directly from the address bar.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const newUrl = `/editor?shader=${encodeURIComponent(code)}`;
+        window.history.replaceState(null, '', newUrl);
+    }, [code]);
+
 
     // After mount, update to preferred/stored/percentage width
     useEffect(() => {
