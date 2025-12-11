@@ -5,6 +5,8 @@ Write, preview, and share shaders — all rendered with **CanvasKit (Skia WebAss
 
 Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 
+<img width="1512" height="982" alt="Screenshot 2025-12-11 at 4 53 42 PM" src="https://github.com/user-attachments/assets/d84d3d0c-b9bf-4379-9653-aa86c4e6354c" />
+
 ## ✨ **Features**
 
 ### 🎨 Real-time SKSL Shader Preview
