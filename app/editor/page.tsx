@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -87,6 +87,7 @@ const registerSkslLanguage = (monaco: Monaco) => {
 };
 
 const defaultShaderCode = `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -309,19 +310,36 @@ export default function EditorPage() {
     }, [code]);
 
 
+    const minPaneWidth = 240;
+    const getMaxEditorWidth = useCallback(() => {
+        const containerWidth = containerRef.current?.getBoundingClientRect().width || window.innerWidth || 1920;
+        return Math.max(minPaneWidth, containerWidth - minPaneWidth);
+    }, [minPaneWidth]);
+    const clampWidth = useCallback(
+        (value: number) => Math.max(minPaneWidth, Math.min(value, getMaxEditorWidth())),
+        [getMaxEditorWidth, minPaneWidth]
+    );
+
     // After mount, update to preferred/stored/percentage width
     useEffect(() => {
         setTimeout(() => {
             const stored = window.localStorage.getItem('editorWidth');
             if (stored) {
-                setEditorWidth(parseInt(stored, 10));
+                setEditorWidth(clampWidth(parseInt(stored, 10)));
             } else {
                 const viewportW = window.innerWidth || 1920;
-                const px = Math.max(240, Math.min(viewportW * defaultEditorPercent, viewportW - 240));
-                setEditorWidth(px);
+                const px = Math.max(minPaneWidth, Math.min(viewportW * defaultEditorPercent, viewportW - minPaneWidth));
+                setEditorWidth(clampWidth(px));
             }
         }, 0);
-    }, []);
+    }, [clampWidth, defaultEditorPercent, minPaneWidth]);
+
+    // Clamp width on window resize to avoid handle drifting outside preview.
+    useEffect(() => {
+        const handleResize = () => setEditorWidth((prev) => clampWidth(prev));
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [clampWidth]);
 
     // Prevent text selection while dragging
     useEffect(() => {
@@ -344,7 +362,7 @@ export default function EditorPage() {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
             let newWidth = e.clientX - rect.left;
-            newWidth = Math.max(240, Math.min(newWidth, window.innerWidth - 240));
+            newWidth = clampWidth(newWidth);
             setEditorWidth(newWidth);
         };
         const handleMouseUp = () => {
@@ -361,7 +379,7 @@ export default function EditorPage() {
             if (!containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
             let newWidth = e.touches[0].clientX - rect.left;
-            newWidth = Math.max(240, Math.min(newWidth, window.innerWidth - 240));
+            newWidth = clampWidth(newWidth);
             setEditorWidth(newWidth);
         };
         const handleTouchEnd = () => {
@@ -378,7 +396,7 @@ export default function EditorPage() {
             window.removeEventListener('touchmove', handleTouchMove);
             window.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [dragging, editorWidth]);
+    }, [dragging, editorWidth, clampWidth]);
 
     const startDragging = (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
@@ -389,7 +407,7 @@ export default function EditorPage() {
         <div ref={containerRef} className="flex min-h-screen w-full bg-zinc-100 select-none relative">
             {/* Editor Pane */}
             <div
-                style={{ width: editorWidth, minWidth: 240, maxWidth: '80vw' }}
+                style={{ width: editorWidth, minWidth: 240 }}
                 className="h-full border-r border-zinc-300 bg-white shrink-0 overflow-hidden"
             >
                 <Editor

@@ -7,6 +7,7 @@ const shaderExamples = [
   {
     title: 'Pattern Gradient',
     code: `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
 half4 main(float2 fragCoord) {
@@ -21,6 +22,7 @@ half4 main(float2 fragCoord) {
   {
     title: 'Psychedelic Tunnel',
     code: `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
 half4 main(float2 fragCoord) {
@@ -43,6 +45,7 @@ half4 main(float2 fragCoord) {
   {
     title: 'Color Waves',
     code: `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
 half4 main(float2 fragCoord) {
