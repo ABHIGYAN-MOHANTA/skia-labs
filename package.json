@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.8.0-rc.3",
+    "canvaskit-wasm": "^0.40.0",
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1"
