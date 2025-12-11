@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -248,6 +248,58 @@ export default function EditorPage() {
     const [code, setCode] = useState(() => searchParams.get('shader') ?? defaultShaderCode);
     const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth);
     const [dragging, setDragging] = useState(false);
+    const [baseUrl, setBaseUrl] = useState('');
+
+    // Capture the current origin on the client for share links.
+    useEffect(() => {
+        setTimeout(() => setBaseUrl(window.location.origin), 0);
+    }, []);
+
+    const shareLink = useMemo(() => {
+        if (!baseUrl) return '';
+        return `${baseUrl}/editor?shader=${encodeURIComponent(code)}`;
+    }, [baseUrl, code]);
+
+    const copyShareLink = async () => {
+        if (!shareLink) return;
+        try {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(shareLink);
+            } else {
+                // Fallback for environments without Clipboard API (e.g., http, older browsers)
+                const textarea = document.createElement('textarea');
+                textarea.value = shareLink;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        } catch (err) {
+            console.error('Failed to copy link', err);
+        }
+    };
+
+    const copyCode = async () => {
+        if (!code) return;
+        try {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(code);
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        } catch (err) {
+            console.error('Failed to copy code', err);
+        }
+    };
 
 
     // After mount, update to preferred/stored/percentage width
@@ -354,7 +406,33 @@ export default function EditorPage() {
             </div>
             {/* Preview Pane */}
             <div className={`flex-1 bg-zinc-50 h-full min-w-[240px]${dragging ? ' pointer-events-none' : ''}`}>
-                <ShaderRenderer code={code} />
+                <div className="flex flex-col h-full">
+                    <div className="flex-1">
+                        <ShaderRenderer code={code} />
+                    </div>
+                    <div className="border-t border-zinc-200 bg-white px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-zinc-700">Share this shader</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                        <button
+                                onClick={copyCode}
+                                disabled={!code}
+                                className="text-sm px-3 py-1.5 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+                            >
+                                Copy code
+                            </button>
+                            <button
+                                onClick={copyShareLink}
+                                disabled={!shareLink}
+                                className="text-sm px-3 py-1.5 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+                            >
+                                Copy link
+                            </button>
+                            
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
