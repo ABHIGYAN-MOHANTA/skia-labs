@@ -88,21 +88,21 @@ const registerSkslLanguage = (monaco: Monaco) => {
 function ShaderRenderer({ code }: { code: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [error, setError] = useState<string>('');
-    const [canvasKit, setCanvasKit] = useState<any>(null);
+    const [canvasKit, setCanvasKit] = useState<import('canvaskit-wasm').CanvasKit | null>(null);
+    const errorRef = useRef<string>('');
 
     useEffect(() => {
         // Load CanvasKit
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
         script.onload = () => {
-            (window as any).CanvasKitInit({
+            (window as unknown as { CanvasKitInit?: (opts: unknown) => Promise<import('canvaskit-wasm').CanvasKit> }).CanvasKitInit!({
                 locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
-            }).then((ck: any) => {
+            }).then((ck: import('canvaskit-wasm').CanvasKit) => {
                 setCanvasKit(ck);
             });
         };
         document.head.appendChild(script);
-
         return () => {
             document.head.removeChild(script);
         };
@@ -110,55 +110,48 @@ function ShaderRenderer({ code }: { code: string }) {
 
     useEffect(() => {
         if (!canvasKit || !canvasRef.current) return;
-
         const canvas = canvasRef.current;
         const surface = canvasKit.MakeCanvasSurface(canvas);
         if (!surface) {
-            setError('Failed to create surface');
+            errorRef.current = 'Failed to create surface';
+            setError(errorRef.current);
             return;
         }
-
-        let shader: any = null;
+        let shader: import('canvaskit-wasm').Shader | null = null;
         let animationId: number;
         const startTime = Date.now();
-
         try {
             const effect = canvasKit.RuntimeEffect.Make(code);
             if (!effect) {
-                setError('Failed to compile shader - invalid SKSL syntax');
+                errorRef.current = 'Failed to compile shader - invalid SKSL syntax';
+                setError(errorRef.current);
                 return;
             }
             setError('');
-
             const draw = () => {
                 const skcanvas = surface.getCanvas();
                 const paint = new canvasKit.Paint();
-
                 const currentTime = (Date.now() - startTime) / 1000;
                 const uniforms = new Float32Array([
                     currentTime,
                     canvas.width,
                     canvas.height
                 ]);
-
-                shader = effect.makeShader(uniforms, false);
+                // The 2nd argument is matrix or undefined. Omit for default behavior.
+                shader = effect.makeShader(uniforms);
                 paint.setShader(shader);
-
                 skcanvas.clear(canvasKit.WHITE);
                 skcanvas.drawPaint(paint);
                 surface.flush();
-
                 paint.delete();
                 if (shader) shader.delete();
-
                 animationId = requestAnimationFrame(draw);
             };
-
             draw();
-        } catch (e: any) {
-            setError(e.message || 'Shader compilation error');
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) setError((e as Error).message);
+            else setError('Shader compilation error');
         }
-
         return () => {
             if (animationId) cancelAnimationFrame(animationId);
             if (shader) shader.delete();
@@ -189,24 +182,96 @@ function ShaderRenderer({ code }: { code: string }) {
 }
 
 export default function EditorPage() {
-    const [code, setCode] = useState(`// kind=shader
-uniform float iTime;
-uniform float2 iResolution;
+    const defaultEditorPercent = 0.5; // 50% as user default
+    const initialEditorWidth = 480; // exact SSR and initial render width
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [code, setCode] = useState(`// kind=shader\nuniform float iTime;\nuniform float2 iResolution;\n\nhalf4 main(float2 fragCoord) {\n    // Normalized pixel coordinates (from 0 to 1)\n    float2 uv = fragCoord / iResolution.xy;\n\n    // Time varying pixel color\n    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));\n\n    // Output to screen\n    return half4(col, 1.0);\n}`);
+    const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth); // always matches SSR/html
+    const [dragging, setDragging] = useState(false);
 
-half4 main(float2 fragCoord) {
-    // Normalized pixel coordinates (from 0 to 1)
-    float2 uv = fragCoord / iResolution.xy;
+    // After mount, update to preferred/stored/percentage width
+    useEffect(() => {
+        setTimeout(() => {
+            const stored = window.localStorage.getItem('editorWidth');
+            if (stored) {
+                setEditorWidth(parseInt(stored, 10));
+            } else {
+                const viewportW = window.innerWidth || 1920;
+                const px = Math.max(240, Math.min(viewportW * defaultEditorPercent, viewportW - 240));
+                setEditorWidth(px);
+            }
+        }, 0);
+    }, []);
 
-    // Time varying pixel color
-    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));
+    // Prevent text selection while dragging
+    useEffect(() => {
+        if (dragging) {
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'col-resize';
+        } else {
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        }
+        return () => {
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        };
+    }, [dragging]);
 
-    // Output to screen
-    return half4(col, 1.0);
-}`);
+    useEffect(() => {
+        if (!dragging) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            let newWidth = e.clientX - rect.left;
+            newWidth = Math.max(240, Math.min(newWidth, window.innerWidth - 240));
+            setEditorWidth(newWidth);
+        };
+        const handleMouseUp = () => {
+            setDragging(false);
+            window.localStorage.setItem('editorWidth', String(editorWidth));
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        // Touch events
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!containerRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            let newWidth = e.touches[0].clientX - rect.left;
+            newWidth = Math.max(240, Math.min(newWidth, window.innerWidth - 240));
+            setEditorWidth(newWidth);
+        };
+        const handleTouchEnd = () => {
+            setDragging(false);
+            window.localStorage.setItem('editorWidth', String(editorWidth));
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+        window.addEventListener('touchmove', handleTouchMove);
+        window.addEventListener('touchend', handleTouchEnd);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [dragging, editorWidth]);
+
+    const startDragging = (e: React.MouseEvent | React.TouchEvent) => {
+        e.preventDefault();
+        setDragging(true);
+    };
 
     return (
-        <div className="grid min-h-screen grid-cols-2 bg-zinc-100">
-            <div className="border-r border-zinc-300 bg-white">
+        <div ref={containerRef} className="flex min-h-screen w-full bg-zinc-100 select-none relative">
+            {/* Editor Pane */}
+            <div
+                style={{ width: editorWidth, minWidth: 240, maxWidth: '80vw' }}
+                className="h-full border-r border-zinc-300 bg-white shrink-0 overflow-hidden"
+            >
                 <Editor
                     height="100vh"
                     defaultLanguage="sksl"
@@ -217,7 +282,17 @@ half4 main(float2 fragCoord) {
                     options={{ minimap: { enabled: false } }}
                 />
             </div>
-            <div className="bg-zinc-50">
+            {/* Drag handle */}
+            <div
+                className={`absolute left-0 top-0 z-30 h-full ${dragging ? '' : 'hover:bg-zinc-200'} flex items-center justify-center`}
+                style={{ left: editorWidth - 4, width: 12, cursor: 'col-resize', background: dragging ? '#ddd' : 'transparent', transition: 'background 0.1s' }}
+                onMouseDown={startDragging}
+                onTouchStart={startDragging}
+            >
+                <div className="w-2 h-8 bg-zinc-400 rounded-full opacity-80 pointer-events-none" />
+            </div>
+            {/* Preview Pane */}
+            <div className={`flex-1 bg-zinc-50 h-full min-w-[240px]${dragging ? ' pointer-events-none' : ''}`}>
                 <ShaderRenderer code={code} />
             </div>
         </div>
