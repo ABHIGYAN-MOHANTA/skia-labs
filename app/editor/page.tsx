@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
+import { useSearchParams } from 'next/navigation';
 
 const registerSkslLanguage = (monaco: Monaco) => {
     const languageId = 'sksl';
@@ -85,6 +86,21 @@ const registerSkslLanguage = (monaco: Monaco) => {
     });
 };
 
+const defaultShaderCode = `// kind=shader
+uniform float iTime;
+uniform float2 iResolution;
+
+half4 main(float2 fragCoord) {
+    // Normalized pixel coordinates (from 0 to 1)
+    float2 uv = fragCoord / iResolution.xy;
+
+    // Time varying pixel color
+    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));
+
+    // Output to screen
+    return half4(col, 1.0);
+}`;
+
 function ShaderRenderer({ code }: { code: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [error, setError] = useState<string>('');
@@ -120,9 +136,10 @@ function ShaderRenderer({ code }: { code: string }) {
         if (!canvasKit || !canvasRef.current) return;
         
         const canvas = canvasRef.current;
+        const setErrorAsync = (message: string) => setTimeout(() => setError(message), 0);
         const surface = canvasKit.MakeCanvasSurface(canvas);
         if (!surface) {
-            setError('Failed to create surface');
+            setErrorAsync('Failed to create surface');
             return;
         }
 
@@ -135,10 +152,10 @@ function ShaderRenderer({ code }: { code: string }) {
         try {
             effect = canvasKit.RuntimeEffect.Make(debouncedCode);
             if (!effect) {
-                setError('Failed to compile shader - invalid SKSL syntax');
+                setErrorAsync('Failed to compile shader - invalid SKSL syntax');
                 return;
             }
-            setError('');
+            setErrorAsync('');
 
             const draw = () => {
                 if (!isActive || !effect) return;
@@ -180,9 +197,9 @@ function ShaderRenderer({ code }: { code: string }) {
             draw();
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
-                setError((e as Error).message);
+                setErrorAsync((e as Error).message);
             } else {
-                setError('Shader compilation error');
+                setErrorAsync('Shader compilation error');
             }
         }
 
@@ -224,12 +241,14 @@ function ShaderRenderer({ code }: { code: string }) {
 }
 
 export default function EditorPage() {
+    const searchParams = useSearchParams();
     const defaultEditorPercent = 0.5; // 50% as user default
     const initialEditorWidth = 480; // exact SSR and initial render width
     const containerRef = useRef<HTMLDivElement>(null);
-    const [code, setCode] = useState(`// kind=shader\nuniform float iTime;\nuniform float2 iResolution;\n\nhalf4 main(float2 fragCoord) {\n    // Normalized pixel coordinates (from 0 to 1)\n    float2 uv = fragCoord / iResolution.xy;\n\n    // Time varying pixel color\n    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));\n\n    // Output to screen\n    return half4(col, 1.0);\n}`);
+    const [code, setCode] = useState(() => searchParams.get('shader') ?? defaultShaderCode);
     const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth);
     const [dragging, setDragging] = useState(false);
+
 
     // After mount, update to preferred/stored/percentage width
     useEffect(() => {
