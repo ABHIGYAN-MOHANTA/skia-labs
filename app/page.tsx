@@ -3,6 +3,19 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 
+const heroShaderCode = `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
+uniform float iTime;
+uniform float2 iResolution;
+half4 main(float2 fragCoord) {
+    float2 uv = fragCoord / iResolution.xy;
+    float pattern = sin(uv.x * 20.0 + iTime) * cos(uv.y * 20.0 + iTime);
+    float gradient = uv.x;
+    float combined = pattern * gradient;
+    float3 col = float3(combined);
+    return half4(col, 1.0);
+}`;
+
 const shaderExamples = [
   {
     title: 'Pattern Gradient',
@@ -16,6 +29,18 @@ half4 main(float2 fragCoord) {
     float gradient = uv.x;
     float combined = pattern * gradient;
     float3 col = float3(combined);
+    return half4(col, 1.0);
+}`
+  },
+  {
+    title: 'Color Waves',
+    code: `// kind=shader
+// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
+uniform float iTime;
+uniform float2 iResolution;
+half4 main(float2 fragCoord) {
+    float2 uv = fragCoord / iResolution.xy;
+    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));
     return half4(col, 1.0);
 }`
   },
@@ -39,18 +64,6 @@ half4 main(float2 fragCoord) {
     );
     col *= (spiral * 0.3 + 0.7) * (rings * 0.5 + 0.5);
     col *= 1.0 - dist * 0.5;
-    return half4(col, 1.0);
-}`
-  },
-  {
-    title: 'Color Waves',
-    code: `// kind=shader
-// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
-uniform float iTime;
-uniform float2 iResolution;
-half4 main(float2 fragCoord) {
-    float2 uv = fragCoord / iResolution.xy;
-    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));
     return half4(col, 1.0);
 }`
   }
@@ -159,12 +172,136 @@ function ShaderPreview({ code }: { code: string }) {
   );
 }
 
+function HeroShaderBackground({ code }: { code: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
+  const [canvasVersion, setCanvasVersion] = useState(0);
+
+  useEffect(() => {
+    const globalWin = window as unknown as { CanvasKitLoaded?: CanvasKit };
+    if (globalWin.CanvasKitLoaded) {
+      setTimeout(() => setCanvasKit(globalWin.CanvasKitLoaded ?? null), 0);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
+    script.onload = () => {
+      (window as unknown as {
+        CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
+        CanvasKitLoaded?: CanvasKit;
+      }).CanvasKitInit?.({
+        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
+      }).then((ck: CanvasKit) => {
+        (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;
+        setCanvasKit(ck);
+      });
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setCanvasVersion((v) => v + 1);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!canvasKit || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const resizeCanvas = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return false;
+      const rect = parent.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      return true;
+    };
+
+    if (!resizeCanvas()) return;
+
+    const surface = canvasKit.MakeCanvasSurface(canvas);
+    if (!surface) return;
+
+    let effect: RuntimeEffect | null = null;
+    let shader: Shader | null = null;
+    let animationId: number | null = null;
+    let isActive = true;
+    const startTime = Date.now();
+
+    try {
+      effect = canvasKit.RuntimeEffect.Make(code);
+      if (!effect) return;
+
+      const draw = () => {
+        if (!isActive || !effect) return;
+
+        try {
+          const skcanvas = surface.getCanvas();
+          const paint = new canvasKit.Paint();
+          const currentTime = (Date.now() - startTime) / 1000;
+          const uniforms = new Float32Array([
+            currentTime,
+            canvas.width,
+            canvas.height
+          ]);
+
+          if (shader) {
+            shader.delete();
+            shader = null;
+          }
+
+          shader = effect.makeShader(uniforms);
+          paint.setShader(shader);
+
+          skcanvas.clear(canvasKit.TRANSPARENT);
+          skcanvas.drawPaint(paint);
+          surface.flush();
+
+          paint.delete();
+
+          if (isActive) {
+            animationId = requestAnimationFrame(draw);
+          }
+        } catch {
+          isActive = false;
+        }
+      };
+
+      draw();
+    } catch {
+      console.error('Hero shader error');
+    }
+
+    return () => {
+      isActive = false;
+      if (animationId !== null) cancelAnimationFrame(animationId);
+      if (shader) shader.delete();
+      if (effect) effect.delete();
+      surface.delete();
+    };
+  }, [canvasKit, code, canvasVersion]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full pointer-events-none"
+    />
+  );
+}
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-linear-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10" />
+        <HeroShaderBackground code={heroShaderCode} />
+        <div className="absolute inset-0 bg-linear-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10 mix-blend-screen opacity-70" />
+        <div className="absolute inset-0 bg-linear-to-b from-zinc-900/10 via-transparent to-zinc-900/30" />
         
         <div className="relative max-w-7xl mx-auto px-6 py-24 sm:py-32">
           <div className="text-center space-y-8">
