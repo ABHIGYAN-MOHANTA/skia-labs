@@ -89,7 +89,7 @@ function ShaderRenderer({ code }: { code: string }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [error, setError] = useState<string>('');
     const [canvasKit, setCanvasKit] = useState<import('canvaskit-wasm').CanvasKit | null>(null);
-    const errorRef = useRef<string>('');
+    const [debouncedCode, setDebouncedCode] = useState(code);
 
     useEffect(() => {
         // Load CanvasKit
@@ -108,56 +108,98 @@ function ShaderRenderer({ code }: { code: string }) {
         };
     }, []);
 
+    // Debounce code changes to prevent crashes during typing
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedCode(code);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [code]);
+
     useEffect(() => {
         if (!canvasKit || !canvasRef.current) return;
+        
         const canvas = canvasRef.current;
         const surface = canvasKit.MakeCanvasSurface(canvas);
         if (!surface) {
-            errorRef.current = 'Failed to create surface';
-            setError(errorRef.current);
+            setError('Failed to create surface');
             return;
         }
+
+        let effect: import('canvaskit-wasm').RuntimeEffect | null = null;
         let shader: import('canvaskit-wasm').Shader | null = null;
-        let animationId: number;
+        let animationId: number | null = null;
+        let isActive = true;
         const startTime = Date.now();
+
         try {
-            const effect = canvasKit.RuntimeEffect.Make(code);
+            effect = canvasKit.RuntimeEffect.Make(debouncedCode);
             if (!effect) {
-                errorRef.current = 'Failed to compile shader - invalid SKSL syntax';
-                setError(errorRef.current);
+                setError('Failed to compile shader - invalid SKSL syntax');
                 return;
             }
             setError('');
+
             const draw = () => {
-                const skcanvas = surface.getCanvas();
-                const paint = new canvasKit.Paint();
-                const currentTime = (Date.now() - startTime) / 1000;
-                const uniforms = new Float32Array([
-                    currentTime,
-                    canvas.width,
-                    canvas.height
-                ]);
-                // The 2nd argument is matrix or undefined. Omit for default behavior.
-                shader = effect.makeShader(uniforms);
-                paint.setShader(shader);
-                skcanvas.clear(canvasKit.WHITE);
-                skcanvas.drawPaint(paint);
-                surface.flush();
-                paint.delete();
-                if (shader) shader.delete();
-                animationId = requestAnimationFrame(draw);
+                if (!isActive || !effect) return;
+
+                try {
+                    const skcanvas = surface.getCanvas();
+                    const paint = new canvasKit.Paint();
+                    const currentTime = (Date.now() - startTime) / 1000;
+                    const uniforms = new Float32Array([
+                        currentTime,
+                        canvas.width,
+                        canvas.height
+                    ]);
+
+                    // Clean up previous shader before creating new one
+                    if (shader) {
+                        shader.delete();
+                        shader = null;
+                    }
+
+                    shader = effect.makeShader(uniforms);
+                    paint.setShader(shader);
+
+                    skcanvas.clear(canvasKit.WHITE);
+                    skcanvas.drawPaint(paint);
+                    surface.flush();
+
+                    paint.delete();
+
+                    if (isActive) {
+                        animationId = requestAnimationFrame(draw);
+                    }
+                } catch (e) {
+                    console.error('Render error:', e);
+                    isActive = false;
+                }
             };
+
             draw();
         } catch (e: unknown) {
-            if (e && typeof e === 'object' && 'message' in e) setError((e as Error).message);
-            else setError('Shader compilation error');
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as Error).message);
+            } else {
+                setError('Shader compilation error');
+            }
         }
+
         return () => {
-            if (animationId) cancelAnimationFrame(animationId);
-            if (shader) shader.delete();
+            isActive = false;
+            if (animationId !== null) {
+                cancelAnimationFrame(animationId);
+            }
+            if (shader) {
+                shader.delete();
+            }
+            if (effect) {
+                effect.delete();
+            }
             surface.delete();
         };
-    }, [canvasKit, code]);
+    }, [canvasKit, debouncedCode]);
 
     return (
         <div className="relative h-full w-full flex items-center justify-center bg-zinc-900">
@@ -186,7 +228,7 @@ export default function EditorPage() {
     const initialEditorWidth = 480; // exact SSR and initial render width
     const containerRef = useRef<HTMLDivElement>(null);
     const [code, setCode] = useState(`// kind=shader\nuniform float iTime;\nuniform float2 iResolution;\n\nhalf4 main(float2 fragCoord) {\n    // Normalized pixel coordinates (from 0 to 1)\n    float2 uv = fragCoord / iResolution.xy;\n\n    // Time varying pixel color\n    float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));\n\n    // Output to screen\n    return half4(col, 1.0);\n}`);
-    const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth); // always matches SSR/html
+    const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth);
     const [dragging, setDragging] = useState(false);
 
     // After mount, update to preferred/stored/percentage width
