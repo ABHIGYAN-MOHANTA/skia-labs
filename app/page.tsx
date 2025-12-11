@@ -13,6 +13,10 @@ half4 main(float2 fragCoord) {
     float gradient = uv.x;
     float combined = pattern * gradient;
     float3 col = float3(combined);
+
+    // reduce brightness so the hero text remains readable
+    col *= 0.5;
+
     return half4(col, 1.0);
 }`;
 
@@ -29,6 +33,7 @@ half4 main(float2 fragCoord) {
     float gradient = uv.x;
     float combined = pattern * gradient;
     float3 col = float3(combined);
+    col *= 0.5;
     return half4(col, 1.0);
 }`
   },
@@ -41,6 +46,7 @@ uniform float2 iResolution;
 half4 main(float2 fragCoord) {
     float2 uv = fragCoord / iResolution.xy;
     float3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + float3(0, 2, 4));
+    col *= 0.6;
     return half4(col, 1.0);
 }`
   },
@@ -64,6 +70,9 @@ half4 main(float2 fragCoord) {
     );
     col *= (spiral * 0.3 + 0.7) * (rings * 0.5 + 0.5);
     col *= 1.0 - dist * 0.5;
+
+    col *= 0.6;
+
     return half4(col, 1.0);
 }`
   }
@@ -296,36 +305,45 @@ function HeroShaderBackground({ code }: { code: string }) {
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <HeroShaderBackground code={heroShaderCode} />
-        <div className="absolute inset-0 bg-linear-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10 mix-blend-screen opacity-70" />
-        <div className="absolute inset-0 bg-linear-to-b from-zinc-900/10 via-transparent to-zinc-900/30" />
-        
-        <div className="relative max-w-7xl mx-auto px-6 py-24 sm:py-32">
+
+        {/* subtle color wash (keeps hue) */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/8 via-pink-600/6 to-blue-600/8 pointer-events-none" />
+
+        {/* darker veil for contrast — tune the opacity */}
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-sm pointer-events-none" />
+
+        {/* content above everything */}
+        <div className="relative z-20 max-w-7xl mx-auto px-6 py-24 sm:py-32">
           <div className="text-center space-y-8">
-            <h1 className="text-6xl sm:text-7xl font-bold tracking-tight">
-              <span className="bg-linear-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-6xl sm:text-7xl font-extrabold tracking-tight">
+              <span
+                className="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent
+                           drop-shadow-[0_12px_30px_rgba(0,0,0,0.55)]"
+                style={{ WebkitTextStroke: '0.8px rgba(0,0,0,0.25)' }}
+              >
                 Skia Labs
               </span>
             </h1>
-            
-              <p className="max-w-2xl mx-auto text-xl text-zinc-600 dark:text-zinc-400">
-                Write, test, and explore SKSL shaders in real-time. 
-                A powerful web-based playground for creative coding with Skia&#39;s shader language.
-              </p>
+
+            <p className="max-w-2xl mx-auto text-xl text-zinc-200/95">
+              Write, test, and explore SKSL shaders in real-time.
+              A powerful web-based playground for creative coding with Skia&apos;s shader language.
+            </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
               <Link
                 href="/editor"
-                className="px-8 py-4 bg-linear-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200"
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
               >
                 Launch Editor
               </Link>
               <a
                 href="#gallery"
-                className="px-8 py-4 border-2 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-semibold rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all duration-200"
+                className="px-8 py-4 border-2 border-zinc-300 dark:border-zinc-700 text-zinc-100 font-semibold rounded-full hover:bg-zinc-800/30 transition-all duration-200 z-30"
               >
                 View Examples
               </a>
@@ -374,9 +392,9 @@ export default function Home() {
             <h3 className="text-xl font-semibold mb-2 text-zinc-900 dark:text-zinc-100">
               Powered by CanvasKit
             </h3>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  Built on Skia&#39;s WebAssembly runtime for authentic shader rendering in the browser.
-                </p>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Built on Skia&apos;s WebAssembly runtime for authentic shader rendering in the browser.
+            </p>
           </div>
         </div>
       </div>
@@ -415,14 +433,71 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer
       <div className="border-t border-zinc-200 dark:border-zinc-800 mt-20">
         <div className="max-w-7xl mx-auto px-6 py-12 text-center">
           <p className="text-zinc-600 dark:text-zinc-400">
-            Built with Next.js, Monaco Editor, and CanvasKit
+            Built with Next.js, Monaco Editor, and CanvasKit by <a href="https://github.com/ABHIGYAN-MOHANTA" target="_blank" rel="noopener noreferrer" className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Abhigyan Mohanta</a>
           </p>
+          
+
         </div>
-      </div>
+      </div> */}
+
+      {/* Footer */}
+<div className="border-t border-zinc-200 dark:border-zinc-800 mt-20">
+  <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+
+    <p className="text-zinc-600 dark:text-zinc-400 text-center sm:text-left">
+      Built with{' '}
+      <a
+        href="https://nextjs.org"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-zinc-900 dark:hover:text-white transition-colors"
+      >
+        Next.js
+      </a>
+      ,{' '}
+      <a
+        href="https://microsoft.github.io/monaco-editor"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-zinc-900 dark:hover:text-white transition-colors"
+      >
+        Monaco Editor
+      </a>
+      , and{' '}
+      <a
+        href="https://skia.org/docs/user/modules/canvaskit"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-zinc-900 dark:hover:text-white transition-colors"
+      >
+        CanvasKit
+      </a>
+    </p>
+
+    {/* GitHub Icon */}
+    <a
+      href="https://github.com/ABHIGYAN-MOHANTA/skia-labs"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2"
+    >
+      <svg
+        className="w-6 h-6 hover:scale-110 transition-transform"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M12 .5C5.65.5.5 5.66.5 12.02c0 5.09 3.29 9.41 7.86 10.94.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.55-3.88-1.55-.52-1.33-1.27-1.69-1.27-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.67 1.25 3.32.96.1-.74.4-1.25.73-1.54-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11.07 11.07 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.16-1.18 3.16-1.18.62 1.59.23 2.77.12 3.06.74.81 1.18 1.83 1.18 3.09 0 4.43-2.7 5.4-5.28 5.69.41.36.77 1.08.77 2.18 0 1.58-.01 2.86-.01 3.25 0 .31.21.68.8.56C20.71 21.43 24 17.11 24 12.02 24 5.66 18.85.5 12 .5z" />
+      </svg>
+    </a>
+
+  </div>
+</div>
+
     </div>
   );
 }
