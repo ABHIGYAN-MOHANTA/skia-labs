@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { useSearchParams } from 'next/navigation';
+import { supabase } from '../supabaseClient';
+import { shaderExamples } from '../shaderExamples';
 
 const registerSkslLanguage = (monaco: Monaco) => {
     const languageId = 'sksl';
@@ -246,10 +248,14 @@ export default function EditorPage() {
     const defaultEditorPercent = 0.5; // 50% as user default
     const initialEditorWidth = 480; // exact SSR and initial render width
     const containerRef = useRef<HTMLDivElement>(null);
-    const [code, setCode] = useState(() => searchParams.get('shader') ?? defaultShaderCode);
+    const [code, setCode] = useState(() => defaultShaderCode);
     const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth);
     const [dragging, setDragging] = useState(false);
     const [baseUrl, setBaseUrl] = useState('');
+    const [sharing, setSharing] = useState(false);
+    const [shareId, setShareId] = useState<string | null>(null);
+    const [hasUserEdited, setHasUserEdited] = useState(false);
+    const autosaveTimerRef = useRef<number | null>(null);
 
     // Capture the current origin on the client for share links.
     useEffect(() => {
@@ -257,19 +263,161 @@ export default function EditorPage() {
     }, []);
 
     const shareLink = useMemo(() => {
-        if (!baseUrl) return '';
-        return `${baseUrl}/editor?shader=${encodeURIComponent(code)}`;
-    }, [baseUrl, code]);
+        return baseUrl ? `${baseUrl}/editor` : '';
+    }, [baseUrl]);
+
+    const ensureShareId = useCallback(() => {
+        if (shareId) return shareId;
+
+        const id = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : Math.random().toString(36).slice(2);
+
+        setShareId(id);
+        try {
+            window.localStorage.setItem('shaderShareId', id);
+        } catch {
+            // ignore
+        }
+        return id;
+    }, [shareId]);
+
+    useEffect(() => {
+        const idFromUrl = searchParams.get('id');
+        if (idFromUrl) {
+            setShareId(idFromUrl);
+            return;
+        }
+
+        try {
+            const stored = window.localStorage.getItem('shaderShareId');
+            if (stored) setShareId(stored);
+        } catch {
+            // ignore
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const id = searchParams.get('id');
+        if (!id) return;
+        const client = supabase;
+        if (!client) return;
+
+        let cancelled = false;
+        const load = async () => {
+            const { data, error } = await client
+                .from('shared_shaders')
+                .select('code')
+                .eq('id', id)
+                .single();
+
+            if (cancelled) return;
+            if (error) {
+                console.error('Failed to load shared shader', error);
+                return;
+            }
+            if (data?.code) {
+                setCode(data.code);
+                setHasUserEdited(false);
+            }
+        };
+
+        void load();
+        return () => {
+            cancelled = true;
+        };
+    }, [searchParams]);
+
+    useEffect(() => {
+        const preset = searchParams.get('preset');
+        if (!preset) return;
+        if (searchParams.get('id')) return;
+
+        const idx = Number.parseInt(preset, 10);
+        if (!Number.isFinite(idx)) return;
+        if (idx < 0 || idx >= shaderExamples.length) return;
+
+        setCode(shaderExamples[idx].code);
+        setHasUserEdited(false);
+        setShareId(null);
+        try {
+            window.localStorage.removeItem('shaderShareId');
+        } catch {
+            // ignore
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const legacyShader = searchParams.get('shader');
+        if (!legacyShader) return;
+        if (searchParams.get('id')) return;
+        if (searchParams.get('preset')) return;
+
+        setCode(legacyShader);
+        setHasUserEdited(false);
+        setShareId(null);
+        try {
+            window.localStorage.removeItem('shaderShareId');
+        } catch {
+            // ignore
+        }
+        if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', '/editor');
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
+        const client = supabase;
+        if (!client) return;
+        if (!hasUserEdited) return;
+
+        const id = shareId ?? ensureShareId();
+
+        if (autosaveTimerRef.current !== null) {
+            window.clearTimeout(autosaveTimerRef.current);
+        }
+
+        autosaveTimerRef.current = window.setTimeout(() => {
+            void client
+                .from('shared_shaders')
+                .upsert({ id, code });
+        }, 800);
+
+        return () => {
+            if (autosaveTimerRef.current !== null) {
+                window.clearTimeout(autosaveTimerRef.current);
+                autosaveTimerRef.current = null;
+            }
+        };
+    }, [code, ensureShareId, hasUserEdited, shareId]);
 
     const copyShareLink = async () => {
-        if (!shareLink) return;
+        if (!baseUrl || !code || sharing) return;
+        if (!supabase) {
+            console.error('Sharing unavailable: Supabase client not initialized');
+            return;
+        }
         try {
+            setSharing(true);
+            const id = shareId ?? ensureShareId();
+
+            const { error } = await supabase
+                .from('shared_shaders')
+                .upsert({ id, code });
+
+            if (error) {
+                console.error('Failed to save shared shader', error);
+                return;
+            }
+
+            const url = `${baseUrl}/editor?id=${encodeURIComponent(id)}`;
+
             if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(shareLink);
+                await navigator.clipboard.writeText(url);
             } else {
                 // Fallback for environments without Clipboard API (e.g., http, older browsers)
                 const textarea = document.createElement('textarea');
-                textarea.value = shareLink;
+                textarea.value = url;
                 textarea.style.position = 'fixed';
                 textarea.style.opacity = '0';
                 document.body.appendChild(textarea);
@@ -279,6 +427,8 @@ export default function EditorPage() {
             }
         } catch (err) {
             console.error('Failed to copy link', err);
+        } finally {
+            setSharing(false);
         }
     };
 
@@ -301,14 +451,6 @@ export default function EditorPage() {
             console.error('Failed to copy code', err);
         }
     };
-
-    // Keep the URL in sync with the current code so users can copy directly from the address bar.
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const newUrl = `/editor?shader=${encodeURIComponent(code)}`;
-        window.history.replaceState(null, '', newUrl);
-    }, [code]);
-
 
     const minPaneWidth = 240;
     const getMaxEditorWidth = useCallback(() => {
@@ -414,7 +556,11 @@ export default function EditorPage() {
                     height="100vh"
                     defaultLanguage="sksl"
                     value={code}
-                    onChange={(value) => value && setCode(value)}
+                    onChange={(value) => {
+                        if (!value) return;
+                        setCode(value);
+                        setHasUserEdited(true);
+                    }}
                     beforeMount={registerSkslLanguage}
                     theme="sksl-dark"
                     options={{ minimap: { enabled: false } }}
@@ -449,10 +595,10 @@ export default function EditorPage() {
                             </button>
                             <button
                                 onClick={copyShareLink}
-                                disabled={!shareLink}
+                                disabled={!shareLink || sharing}
                                 className="text-sm px-3 py-1.5 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
                             >
-                                Copy link
+                                {sharing ? 'Saving…' : 'Save & Copy link'}
                             </button>
                             
                         </div>

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.8.0-rc.3",
+    "@supabase/supabase-js": "^2.49.1",
     "canvaskit-wasm": "^0.40.0",
     "next": "16.0.8",
     "react": "19.2.1",
