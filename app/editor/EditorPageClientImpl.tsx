@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '../supabaseClient';
 import { shaderExamples } from '../shaderExamples';
 
 const registerSkslLanguage = (monaco: Monaco) => {
@@ -300,25 +299,22 @@ export default function EditorPage() {
     useEffect(() => {
         const id = searchParams.get('id');
         if (!id) return;
-        const client = supabase;
-        if (!client) return;
 
         let cancelled = false;
         const load = async () => {
-            const { data, error } = await client
-                .from('shared_shaders')
-                .select('code')
-                .eq('id', id)
-                .single();
-
-            if (cancelled) return;
-            if (error) {
+            try {
+                const res = await fetch(`/api/shader?id=${encodeURIComponent(id)}`);
+                const data = await res.json();
+                
+                if (cancelled) return;
+                if (data?.code) {
+                    setCode(data.code);
+                    setHasUserEdited(false);
+                } else if (data?.error) {
+                    console.error('Failed to load shared shader:', data.error);
+                }
+            } catch (error) {
                 console.error('Failed to load shared shader', error);
-                return;
-            }
-            if (data?.code) {
-                setCode(data.code);
-                setHasUserEdited(false);
             }
         };
 
@@ -367,8 +363,6 @@ export default function EditorPage() {
     }, [searchParams]);
 
     useEffect(() => {
-        const client = supabase;
-        if (!client) return;
         if (!hasUserEdited) return;
 
         const id = shareId ?? ensureShareId();
@@ -378,9 +372,11 @@ export default function EditorPage() {
         }
 
         autosaveTimerRef.current = window.setTimeout(() => {
-            void client
-                .from('shared_shaders')
-                .upsert({ id, code });
+            void fetch('/api/shader', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, code })
+            }).catch(console.error);
         }, 800);
 
         return () => {
@@ -393,20 +389,18 @@ export default function EditorPage() {
 
     const copyShareLink = async () => {
         if (!baseUrl || !code || sharing) return;
-        if (!supabase) {
-            console.error('Sharing unavailable: Supabase client not initialized');
-            return;
-        }
         try {
             setSharing(true);
             const id = shareId ?? ensureShareId();
 
-            const { error } = await supabase
-                .from('shared_shaders')
-                .upsert({ id, code });
+            const res = await fetch('/api/shader', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, code })
+            });
 
-            if (error) {
-                console.error('Failed to save shared shader', error);
+            if (!res.ok) {
+                console.error('Failed to save shared shader');
                 return;
             }
 

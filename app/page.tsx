@@ -247,6 +247,42 @@ function HeroShaderBackground({ code }: { code: string }) {
 }
 
 export default function Home() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const globalWin = window as unknown as { CanvasKitLoaded?: CanvasKit };
+    if (globalWin.CanvasKitLoaded) {
+      setIsLoaded(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
+    script.onload = () => {
+      (window as unknown as {
+        CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
+        CanvasKitLoaded?: CanvasKit;
+      }).CanvasKitInit?.({
+        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
+      }).then((ck: CanvasKit) => {
+        (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;
+        setIsLoaded(true);
+      });
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-zinc-600 dark:text-zinc-400 font-medium animate-pulse">Loading Skia Engine...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
       {/* Hero Section */}
