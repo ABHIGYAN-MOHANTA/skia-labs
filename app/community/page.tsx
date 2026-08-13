@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, increment, setDoc, query, where, arrayUnion, arrayRemove, deleteDoc, orderBy, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
+import { shaderExamples } from '../shaderExamples';
 
 interface ShaderDoc {
     id: string;
@@ -101,15 +102,6 @@ function ShaderPreview({ code }: { code: string }) {
             if (shader) shader.delete();
             if (effect) effect.delete();
             if (surface) surface.delete();
-            
-            // Explicitly free the WebGL context to prevent mobile memory leaks
-            if (canvasRef.current) {
-                const gl = canvasRef.current.getContext('webgl2') || canvasRef.current.getContext('webgl');
-                if (gl) {
-                    const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
-                    if (ext) ext.loseContext();
-                }
-            }
         };
     }, [code, isIntersecting, isVisible]);
 
@@ -306,9 +298,11 @@ export default function CommunityPage() {
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-8 pt-24 sm:p-12 sm:pt-28">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col-reverse sm:flex-row justify-between items-start sm:items-center gap-6 sm:gap-0 mb-12">
-                    <div>
-                        <h1 className="text-4xl font-extrabold tracking-tight mb-2">Community Gallery</h1>
-                        <p className="text-zinc-500 dark:text-zinc-400">Discover and get inspired by shaders created by the community.</p>
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 className="text-3xl font-bold tracking-tight mb-2">Community Shaders</h2>
+                            <p className="text-zinc-500 dark:text-zinc-400">Explore and remix creations from the community.</p>
+                        </div>
                     </div>
                     <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>

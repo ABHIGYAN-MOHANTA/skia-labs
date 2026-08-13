@@ -223,7 +223,7 @@ function ShaderRenderer({ code }: { code: string }) {
                 className="max-w-full max-h-full"
             />
             {error && (
-                <div className="absolute top-4 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm">
+                <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg">
                     {error}
                 </div>
             )}
@@ -277,6 +277,7 @@ export default function EditorPage() {
     const [communityTitle, setCommunityTitle] = useState('');
     const [sharingToCommunity, setSharingToCommunity] = useState(false);
     const [communityShareSuccess, setCommunityShareSuccess] = useState(false);
+    const [communityShareError, setCommunityShareError] = useState('');
 
     // Capture the current origin on the client for share links.
     useEffect(() => {
@@ -491,6 +492,18 @@ export default function EditorPage() {
         if (!code || sharingToCommunity || !communityTitle || !user) return;
         try {
             setSharingToCommunity(true);
+            setCommunityShareError('');
+            
+            // Validate the shader before sharing
+            const ck = await import('@/lib/canvaskit').then(m => m.loadCanvasKit());
+            const effect = ck.RuntimeEffect.Make(code);
+            if (!effect) {
+                setCommunityShareError("Cannot share a broken shader! Please fix the compilation errors first.");
+                setSharingToCommunity(false);
+                return;
+            }
+            effect.delete(); // Free memory
+
             const id = shareId ?? ensureShareId();
 
             const shaderRef = doc(db, 'shaders', id);
@@ -726,7 +739,7 @@ export default function EditorPage() {
             {showCommunityModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-black/40 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4 text-white">
-                        <h3 className="text-lg font-bold text-white">Share to Community</h3>
+                        <h3 className="text-xl font-bold mb-4">Share to Community</h3>
                         
                         {communityShareSuccess ? (
                             <div className="py-4 text-center text-green-400 font-medium flex flex-col items-center gap-2">
@@ -737,6 +750,11 @@ export default function EditorPage() {
                             </div>
                         ) : (
                             <>
+                                {communityShareError && (
+                                    <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-500 text-sm mb-2">
+                                        {communityShareError}
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-sm font-medium text-zinc-300 mb-1">Title <span className="text-pink-500">*</span></label>
                                     <input 
@@ -750,7 +768,10 @@ export default function EditorPage() {
                                 </div>
                                 <div className="flex gap-2 justify-end mt-4">
                                     <button 
-                                        onClick={() => setShowCommunityModal(false)}
+                                        onClick={() => {
+                                            setShowCommunityModal(false);
+                                            setCommunityShareError('');
+                                        }}
                                         className="px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
                                     >
                                         Cancel

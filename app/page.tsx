@@ -88,14 +88,6 @@ function ShaderPreview({ code }: { code: string }) {
       if (shader) shader.delete();
       if (effect) effect.delete();
       surface.delete();
-
-      if (canvasRef.current) {
-        const gl = canvasRef.current.getContext('webgl2') || canvasRef.current.getContext('webgl');
-        if (gl) {
-          const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
-          if (ext) ext.loseContext();
-        }
-      }
     };
   }, [canvasKit, code, isIntersecting, isVisible]);
 
@@ -210,14 +202,6 @@ function HeroShaderBackground({ code }: { code: string }) {
       if (shader) shader.delete();
       if (effect) effect.delete();
       surface.delete();
-
-      if (canvasRef.current) {
-        const gl = canvasRef.current.getContext('webgl2') || canvasRef.current.getContext('webgl');
-        if (gl) {
-          const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
-          if (ext) ext.loseContext();
-        }
-      }
     };
   }, [canvasKit, code, canvasVersion, isIntersecting, isVisible]);
 
