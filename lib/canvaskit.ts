@@ -20,12 +20,12 @@ export function loadCanvasKit(): Promise<CanvasKit> {
     }
 
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
+    script.src = 'https://unpkg.com/canvaskit-wasm@0.41.1/bin/canvaskit.js';
     script.onload = () => {
       (window as unknown as {
         CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
       }).CanvasKitInit?.({
-        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
+        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@0.41.1/bin/' + file
       })
       .then((ck: CanvasKit) => {
         (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;

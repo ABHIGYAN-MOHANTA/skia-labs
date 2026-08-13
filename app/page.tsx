@@ -4,21 +4,29 @@ import Link from 'next/link';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
 import { loadCanvasKit } from '@/lib/canvaskit';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 
 const heroShaderCode = shaderExamples.find(s => s.title === 'Starfield')?.code || '';
 
 function ShaderPreview({ code }: { code: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasRef, isIntersecting] = useIntersectionObserver<HTMLCanvasElement>();
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    loadCanvasKit()
-      .then(setCanvasKit)
-      .catch(console.error);
+    const handleVisibilityChange = () => setIsVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   useEffect(() => {
-    if (!canvasKit || !canvasRef.current) return;
+    if (isIntersecting) {
+      loadCanvasKit().then(setCanvasKit).catch(console.error);
+    }
+  }, [isIntersecting]);
+
+  useEffect(() => {
+    if (!canvasKit || !canvasRef.current || !isIntersecting || !isVisible) return;
 
     const canvas = canvasRef.current;
     const surface = canvasKit.MakeCanvasSurface(canvas);
@@ -80,8 +88,16 @@ function ShaderPreview({ code }: { code: string }) {
       if (shader) shader.delete();
       if (effect) effect.delete();
       surface.delete();
+
+      if (canvasRef.current) {
+        const gl = canvasRef.current.getContext('webgl2') || canvasRef.current.getContext('webgl');
+        if (gl) {
+          const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+          if (ext) ext.loseContext();
+        }
+      }
     };
-  }, [canvasKit, code]);
+  }, [canvasKit, code, isIntersecting, isVisible]);
 
   return (
     <canvas
@@ -94,15 +110,22 @@ function ShaderPreview({ code }: { code: string }) {
 }
 
 function HeroShaderBackground({ code }: { code: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasRef, isIntersecting] = useIntersectionObserver<HTMLCanvasElement>();
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
   const [canvasVersion, setCanvasVersion] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    loadCanvasKit()
-      .then(setCanvasKit)
-      .catch(console.error);
+    const handleVisibilityChange = () => setIsVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+
+  useEffect(() => {
+    if (isIntersecting) {
+      loadCanvasKit().then(setCanvasKit).catch(console.error);
+    }
+  }, [isIntersecting]);
 
   useEffect(() => {
     const handleResize = () => setCanvasVersion((v) => v + 1);
@@ -111,7 +134,7 @@ function HeroShaderBackground({ code }: { code: string }) {
   }, []);
 
   useEffect(() => {
-    if (!canvasKit || !canvasRef.current) return;
+    if (!canvasKit || !canvasRef.current || !isIntersecting || !isVisible) return;
 
     const canvas = canvasRef.current;
     const resizeCanvas = () => {
@@ -187,8 +210,16 @@ function HeroShaderBackground({ code }: { code: string }) {
       if (shader) shader.delete();
       if (effect) effect.delete();
       surface.delete();
+
+      if (canvasRef.current) {
+        const gl = canvasRef.current.getContext('webgl2') || canvasRef.current.getContext('webgl');
+        if (gl) {
+          const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+          if (ext) ext.loseContext();
+        }
+      }
     };
-  }, [canvasKit, code, canvasVersion]);
+  }, [canvasKit, code, canvasVersion, isIntersecting, isVisible]);
 
   return (
     <canvas
