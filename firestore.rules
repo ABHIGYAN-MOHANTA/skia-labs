@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /shaders/{shaderId} {
+      // Anyone can read
+      allow read: if true;
+      // Anyone logged in can create
+      allow create: if request.auth != null && request.resource.data.authorUid == request.auth.uid;
+      // The owner can update everything. Anyone logged in can update likes/likedBy.
+      allow update: if request.auth != null && (
+        resource.data.authorUid == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy'])
+      );
+      // Only the owner can delete
+      allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+    }
+    
+    match /comments/{commentId} {
+      // Anyone can read comments
+      allow read: if true;
+      // Anyone can post a comment
+      allow create: if true;
+      // Only the author can delete their comment
+      allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
+    }
+  }
+}

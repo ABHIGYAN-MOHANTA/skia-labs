@@ -1,8 +1,13 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { type Monaco } from '@monaco-editor/react';
+import Link from 'next/link';
+import { loadCanvasKit } from '@/lib/canvaskit';
 import { useSearchParams } from 'next/navigation';
 import { shaderExamples } from '../shaderExamples';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
 
 const registerSkslLanguage = (monaco: Monaco) => {
     const languageId = 'sksl';
@@ -110,20 +115,9 @@ function ShaderRenderer({ code }: { code: string }) {
     const [debouncedCode, setDebouncedCode] = useState(code);
 
     useEffect(() => {
-        // Load CanvasKit
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
-        script.onload = () => {
-            (window as unknown as { CanvasKitInit?: (opts: unknown) => Promise<import('canvaskit-wasm').CanvasKit> }).CanvasKitInit!({
-                locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
-            }).then((ck: import('canvaskit-wasm').CanvasKit) => {
-                setCanvasKit(ck);
-            });
-        };
-        document.head.appendChild(script);
-        return () => {
-            document.head.removeChild(script);
-        };
+        loadCanvasKit()
+            .then(setCanvasKit)
+            .catch(console.error);
     }, []);
 
     // Debounce code changes to prevent crashes during typing
@@ -254,7 +248,35 @@ export default function EditorPage() {
     const [sharing, setSharing] = useState(false);
     const [shareId, setShareId] = useState<string | null>(null);
     const [hasUserEdited, setHasUserEdited] = useState(false);
+    const [isFetchingShader, setIsFetchingShader] = useState(() => !!searchParams?.get('id'));
+
+    useEffect(() => {
+        // Suppress annoying harmless "Canceled" errors from Monaco Editor
+        const originalConsoleError = console.error;
+        console.error = (...args: any[]) => {
+            const arg = args[0];
+            if (typeof arg === 'string' && arg.includes('Canceled')) return;
+            if (arg && typeof arg === 'object') {
+                if (arg.name === 'Canceled' || arg.message === 'Canceled' || (typeof arg.message === 'string' && arg.message.includes('Canceled'))) {
+                    return;
+                }
+            }
+            originalConsoleError.apply(console, args);
+        };
+
+        return () => {
+            console.error = originalConsoleError;
+        };
+    }, []);
     const autosaveTimerRef = useRef<number | null>(null);
+
+    const { user } = useAuth();
+    const [authorUid, setAuthorUid] = useState<string | null>(null);
+
+    const [showCommunityModal, setShowCommunityModal] = useState(false);
+    const [communityTitle, setCommunityTitle] = useState('');
+    const [sharingToCommunity, setSharingToCommunity] = useState(false);
+    const [communityShareSuccess, setCommunityShareSuccess] = useState(false);
 
     // Capture the current origin on the client for share links.
     useEffect(() => {
@@ -266,35 +288,41 @@ export default function EditorPage() {
     }, [baseUrl]);
 
     const ensureShareId = useCallback(() => {
-        if (shareId) return shareId;
+        if (!user) {
+            // Cannot save without logging in, but we can generate a local ID
+            const newId = crypto.randomUUID();
+            setShareId(newId);
+            return newId;
+        }
 
-        const id = typeof crypto !== 'undefined' && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Math.random().toString(36).slice(2);
+        // If the current shader has an authorUid that doesn't match the current user,
+        // it means we are trying to edit someone else's shader. We should create a new ID (fork).
+        if (authorUid && authorUid !== user.uid) {
+            const newId = crypto.randomUUID();
+            setShareId(newId);
+            setAuthorUid(user.uid);
+            try {
+                window.localStorage.setItem('shaderShareId', newId);
+            } catch {
+                // ignore
+            }
+            if (typeof window !== 'undefined') {
+                window.history.replaceState(null, '', `/editor?id=${newId}`);
+            }
+            return newId;
+        }
 
-        setShareId(id);
+        // Otherwise generate a new ID if we don't have one
+        const newId = crypto.randomUUID();
+        setShareId(newId);
+        setAuthorUid(user.uid);
         try {
-            window.localStorage.setItem('shaderShareId', id);
+            window.localStorage.setItem('shaderShareId', newId);
         } catch {
             // ignore
         }
-        return id;
-    }, [shareId]);
-
-    useEffect(() => {
-        const idFromUrl = searchParams.get('id');
-        if (idFromUrl) {
-            setShareId(idFromUrl);
-            return;
-        }
-
-        try {
-            const stored = window.localStorage.getItem('shaderShareId');
-            if (stored) setShareId(stored);
-        } catch {
-            // ignore
-        }
-    }, [searchParams]);
+        return newId;
+    }, [user, authorUid]);
 
     useEffect(() => {
         const id = searchParams.get('id');
@@ -302,19 +330,27 @@ export default function EditorPage() {
 
         let cancelled = false;
         const load = async () => {
+            setIsFetchingShader(true);
             try {
-                const res = await fetch(`/api/shader?id=${encodeURIComponent(id)}`);
-                const data = await res.json();
+                const docRef = doc(db, 'shaders', id);
+                const docSnap = await getDoc(docRef);
                 
                 if (cancelled) return;
-                if (data?.code) {
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
                     setCode(data.code);
+                    setAuthorUid(data.authorUid || null);
                     setHasUserEdited(false);
-                } else if (data?.error) {
-                    console.error('Failed to load shared shader:', data.error);
+                } else {
+                    console.warn('Failed to load shared shader: Document does not exist');
                 }
             } catch (error) {
-                console.error('Failed to load shared shader', error);
+                console.warn('Failed to load shared shader', error);
+            } finally {
+                if (!cancelled) {
+                    setIsFetchingShader(false);
+                }
             }
         };
 
@@ -336,6 +372,7 @@ export default function EditorPage() {
         setCode(shaderExamples[idx].code);
         setHasUserEdited(false);
         setShareId(null);
+        setAuthorUid(null);
         try {
             window.localStorage.removeItem('shaderShareId');
         } catch {
@@ -363,7 +400,7 @@ export default function EditorPage() {
     }, [searchParams]);
 
     useEffect(() => {
-        if (!hasUserEdited) return;
+        if (!hasUserEdited || !user) return; // Only autosave if logged in
 
         const id = shareId ?? ensureShareId();
 
@@ -371,12 +408,28 @@ export default function EditorPage() {
             window.clearTimeout(autosaveTimerRef.current);
         }
 
-        autosaveTimerRef.current = window.setTimeout(() => {
-            void fetch('/api/shader', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, code })
-            }).catch(console.error);
+        autosaveTimerRef.current = window.setTimeout(async () => {
+            try {
+                const shaderRef = doc(db, 'shaders', id);
+                const shaderSnap = await getDoc(shaderRef);
+                
+                if (shaderSnap.exists()) {
+                    // Update only if owned
+                    if (shaderSnap.data().authorUid === user.uid) {
+                        await updateDoc(shaderRef, { code });
+                    }
+                } else {
+                    // Create
+                    await setDoc(shaderRef, {
+                        code,
+                        authorUid: user.uid,
+                        timestamp: Date.now(),
+                        likes: 0,
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to autosave shader', err);
+            }
         }, 800);
 
         return () => {
@@ -385,23 +438,31 @@ export default function EditorPage() {
                 autosaveTimerRef.current = null;
             }
         };
-    }, [code, ensureShareId, hasUserEdited, shareId]);
+    }, [code, ensureShareId, hasUserEdited, shareId, user]);
 
     const copyShareLink = async () => {
-        if (!baseUrl || !code || sharing) return;
+        if (!baseUrl || !code || sharing || !user) {
+            if (!user) alert("Please sign in to share shaders.");
+            return;
+        }
         try {
             setSharing(true);
             const id = shareId ?? ensureShareId();
 
-            const res = await fetch('/api/shader', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, code })
-            });
-
-            if (!res.ok) {
-                console.error('Failed to save shared shader');
-                return;
+            const shaderRef = doc(db, 'shaders', id);
+            const shaderSnap = await getDoc(shaderRef);
+            
+            if (shaderSnap.exists()) {
+                if (shaderSnap.data().authorUid === user.uid) {
+                    await updateDoc(shaderRef, { code });
+                }
+            } else {
+                await setDoc(shaderRef, {
+                    code,
+                    authorUid: user.uid,
+                    timestamp: Date.now(),
+                    likes: 0,
+                });
             }
 
             const url = `${baseUrl}/editor?id=${encodeURIComponent(id)}`;
@@ -423,6 +484,50 @@ export default function EditorPage() {
             console.error('Failed to copy link', err);
         } finally {
             setSharing(false);
+        }
+    };
+
+    const shareToCommunity = async () => {
+        if (!code || sharingToCommunity || !communityTitle || !user) return;
+        try {
+            setSharingToCommunity(true);
+            const id = shareId ?? ensureShareId();
+
+            const shaderRef = doc(db, 'shaders', id);
+            const shaderSnap = await getDoc(shaderRef);
+            
+            const shaderData = {
+                code,
+                title: communityTitle,
+                author: user.displayName || 'Anonymous',
+                authorUid: user.uid,
+                timestamp: Date.now(),
+                isPublic: true,
+            };
+
+            if (shaderSnap.exists()) {
+                if (shaderSnap.data().authorUid === user.uid) {
+                    await updateDoc(shaderRef, shaderData);
+                } else {
+                    console.error('Cannot update a shader you do not own');
+                    return;
+                }
+            } else {
+                await setDoc(shaderRef, {
+                    ...shaderData,
+                    likes: 0
+                });
+            }
+
+            setCommunityShareSuccess(true);
+            setTimeout(() => {
+                setShowCommunityModal(false);
+                setCommunityShareSuccess(false);
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to share to community', err);
+        } finally {
+            setSharingToCommunity(false);
         }
     };
 
@@ -540,65 +645,129 @@ export default function EditorPage() {
     };
 
     return (
-        <div ref={containerRef} className="flex min-h-screen w-full bg-zinc-100 select-none relative">
-            {/* Editor Pane */}
-            <div
-                style={{ width: editorWidth, minWidth: 240 }}
-                className="h-full border-r border-zinc-300 bg-white shrink-0 overflow-hidden"
-            >
-                <Editor
-                    height="100vh"
-                    defaultLanguage="sksl"
-                    value={code}
-                    onChange={(value) => {
-                        if (!value) return;
-                        setCode(value);
-                        setHasUserEdited(true);
-                    }}
-                    beforeMount={registerSkslLanguage}
-                    theme="sksl-dark"
-                    options={{ minimap: { enabled: false } }}
-                />
-            </div>
-            {/* Drag handle */}
-            <div
-                className={`absolute left-0 top-0 z-30 h-full ${dragging ? '' : 'hover:bg-zinc-200'} flex items-center justify-center`}
-                style={{ left: editorWidth - 4, width: 12, cursor: 'col-resize', background: dragging ? '#ddd' : 'transparent', transition: 'background 0.1s' }}
-                onMouseDown={startDragging}
-                onTouchStart={startDragging}
-            >
-                <div className="w-2 h-8 bg-zinc-400 rounded-full opacity-80 pointer-events-none" />
-            </div>
-            {/* Preview Pane */}
-            <div className={`flex-1 bg-zinc-50 h-full min-w-[240px]${dragging ? ' pointer-events-none' : ''}`}>
-                <div className="flex flex-col h-full">
-                    <div className="flex-1">
-                        <ShaderRenderer code={code} />
+        <>
+            <div ref={containerRef} className="flex h-screen w-full bg-zinc-950 select-none relative">
+                {isFetchingShader && (
+                    <div className="absolute inset-0 z-[45] bg-zinc-950/80 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p className="text-zinc-400 font-medium animate-pulse">Loading shader...</p>
                     </div>
-                    <div className="border-t border-zinc-200 bg-white px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-sm font-medium text-zinc-700">Share this shader</span>
+                )}
+                {/* Editor Pane */}
+                <div
+                    style={{ width: editorWidth, minWidth: 240 }}
+                    className="h-full border-r border-zinc-300 bg-white shrink-0 overflow-hidden"
+                >
+                    <Editor
+                        height="100%"
+                        defaultLanguage="sksl"
+                        value={code}
+                        onChange={(value) => {
+                            if (!value) return;
+                            setCode(value);
+                            setHasUserEdited(true);
+                        }}
+                        beforeMount={registerSkslLanguage}
+                        theme="sksl-dark"
+                        options={{ minimap: { enabled: false }, padding: { top: 64 } }}
+                    />
+                </div>
+                {/* Drag handle */}
+                <div
+                    className={`absolute left-0 top-0 z-30 h-full ${dragging ? '' : 'hover:bg-zinc-200'} flex items-center justify-center`}
+                    style={{ left: editorWidth - 4, width: 12, cursor: 'col-resize', background: dragging ? '#ddd' : 'transparent', transition: 'background 0.1s' }}
+                    onMouseDown={startDragging}
+                    onTouchStart={startDragging}
+                >
+                    <div className="w-2 h-8 bg-zinc-400 rounded-full opacity-80 pointer-events-none" />
+                </div>
+                {/* Preview Pane */}
+                <div className={`flex-1 bg-zinc-950 h-full min-w-[240px]${dragging ? ' pointer-events-none' : ''}`}>
+                    <div className="flex flex-col h-full">
+                        <div className="flex-1">
+                            <ShaderRenderer code={code} />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                        <button
-                                onClick={copyCode}
-                                disabled={!code}
-                                className="text-sm px-3 py-1.5 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
-                            >
-                                Copy code
-                            </button>
+                        <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm font-medium text-zinc-300">Share this shader</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
                             <button
-                                onClick={copyShareLink}
-                                disabled={!shareLink || sharing}
-                                className="text-sm px-3 py-1.5 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
-                            >
-                                {sharing ? 'Saving…' : 'Save & Copy link'}
-                            </button>
-                            
+                                    onClick={copyCode}
+                                    disabled={!code}
+                                    className="text-sm px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-100 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                                >
+                                    Copy code
+                                </button>
+                                <button
+                                    onClick={copyShareLink}
+                                    disabled={!shareLink || sharing}
+                                    className="text-sm px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-100 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                                >
+                                    {sharing ? 'Saving…' : 'Save & Copy link'}
+                                </button>
+                                {user ? (
+                                    <button
+                                        onClick={() => setShowCommunityModal(true)}
+                                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm font-medium rounded-md shadow-sm transition-all"
+                                    >
+                                        Share to Community
+                                    </button>
+                                ) : (
+                                    <div className="text-zinc-500 text-sm italic">
+                                        Sign in to share
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+            {showCommunityModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-black/40 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4 text-white">
+                        <h3 className="text-lg font-bold text-white">Share to Community</h3>
+                        
+                        {communityShareSuccess ? (
+                            <div className="py-4 text-center text-green-400 font-medium flex flex-col items-center gap-2">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Successfully shared!
+                            </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-300 mb-1">Title <span className="text-pink-500">*</span></label>
+                                    <input 
+                                        type="text" 
+                                        value={communityTitle} 
+                                        onChange={e => setCommunityTitle(e.target.value)}
+                                        className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-zinc-500" 
+                                        placeholder="e.g. Neon Waves" 
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="flex gap-2 justify-end mt-4">
+                                    <button 
+                                        onClick={() => setShowCommunityModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white transition-colors rounded-lg"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={shareToCommunity}
+                                        disabled={!communityTitle || sharingToCommunity}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 transition-colors rounded-lg disabled:opacity-50"
+                                    >
+                                        {sharingToCommunity ? 'Sharing...' : 'Publish'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

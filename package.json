@@ -11,6 +11,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.8.0-rc.3",
     "canvaskit-wasm": "^0.40.0",
+    "firebase": "^12.17.1",
     "ioredis": "^5.11.1",
     "next": "16.0.8",
     "react": "19.2.1",

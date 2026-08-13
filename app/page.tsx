@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
+import { loadCanvasKit } from '@/lib/canvaskit';
 
 const heroShaderCode = shaderExamples.find(s => s.title === 'Starfield')?.code || '';
 
@@ -11,26 +12,9 @@ function ShaderPreview({ code }: { code: string }) {
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
 
   useEffect(() => {
-    const globalWin = window as unknown as { CanvasKitLoaded?: CanvasKit };
-    if (globalWin.CanvasKitLoaded) {
-      setTimeout(() => setCanvasKit(globalWin.CanvasKitLoaded ?? null), 0);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
-    script.onload = () => {
-      (window as unknown as {
-        CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
-        CanvasKitLoaded?: CanvasKit;
-      }).CanvasKitInit?.({
-        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
-      }).then((ck: CanvasKit) => {
-        (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;
-        setCanvasKit(ck);
-      });
-    };
-    document.head.appendChild(script);
+    loadCanvasKit()
+      .then(setCanvasKit)
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -115,26 +99,9 @@ function HeroShaderBackground({ code }: { code: string }) {
   const [canvasVersion, setCanvasVersion] = useState(0);
 
   useEffect(() => {
-    const globalWin = window as unknown as { CanvasKitLoaded?: CanvasKit };
-    if (globalWin.CanvasKitLoaded) {
-      setTimeout(() => setCanvasKit(globalWin.CanvasKitLoaded ?? null), 0);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
-    script.onload = () => {
-      (window as unknown as {
-        CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
-        CanvasKitLoaded?: CanvasKit;
-      }).CanvasKitInit?.({
-        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
-      }).then((ck: CanvasKit) => {
-        (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;
-        setCanvasKit(ck);
-      });
-    };
-    document.head.appendChild(script);
+    loadCanvasKit()
+      .then(setCanvasKit)
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -235,26 +202,9 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const globalWin = window as unknown as { CanvasKitLoaded?: CanvasKit };
-    if (globalWin.CanvasKitLoaded) {
-      setIsLoaded(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/canvaskit-wasm@latest/bin/canvaskit.js';
-    script.onload = () => {
-      (window as unknown as {
-        CanvasKitInit?: (opts: { locateFile: (file: string) => string }) => Promise<CanvasKit>;
-        CanvasKitLoaded?: CanvasKit;
-      }).CanvasKitInit?.({
-        locateFile: (file: string) => 'https://unpkg.com/canvaskit-wasm@latest/bin/' + file
-      }).then((ck: CanvasKit) => {
-        (window as unknown as { CanvasKitLoaded?: CanvasKit }).CanvasKitLoaded = ck;
-        setIsLoaded(true);
-      });
-    };
-    document.head.appendChild(script);
+    loadCanvasKit()
+      .then(() => setIsLoaded(true))
+      .catch(console.error);
   }, []);
 
   if (!isLoaded) {
@@ -285,7 +235,7 @@ export default function Home() {
         {/* darker veil for contrast — removed per user request */}
 
         {/* content above everything */}
-        <div className="relative z-20 max-w-7xl mx-auto px-6 py-24 sm:py-32">
+        <div className="relative z-20 max-w-7xl mx-auto px-6 pt-32 pb-24 sm:pt-40 sm:pb-32">
           <div className="text-center space-y-8">
             <h1 className="text-6xl sm:text-7xl font-extrabold tracking-tight">
               <span
@@ -302,16 +252,22 @@ export default function Home() {
               A powerful web-based playground for creative coding with Skia&apos;s shader language.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[280px] sm:max-w-none mx-auto">
               <Link
                 href="/editor"
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
+                className="w-full sm:w-auto text-center px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
               >
                 Launch Editor
               </Link>
+              <Link
+                href="/community"
+                className="w-full sm:w-auto text-center px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
+              >
+                Community
+              </Link>
               <a
                 href="#gallery"
-                className="px-8 py-4 border-2 border-zinc-300 dark:border-zinc-700 text-zinc-100 font-semibold rounded-full hover:bg-zinc-800/30 transition-all duration-200 z-30"
+                className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-zinc-100 font-semibold rounded-full hover:bg-white/10 transition-all duration-200 z-30"
               >
                 View Examples
               </a>
@@ -413,7 +369,7 @@ export default function Home() {
       </div> */}
 
       {/* Footer */}
-      <div className="border-t border-zinc-200 dark:border-zinc-800 mt-20">
+      <div className="border-t border-white/10 bg-black/40 backdrop-blur-md mt-20">
         <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col sm:flex-row items-center justify-between gap-4">
 
           <p className="text-zinc-600 dark:text-zinc-400 text-center sm:text-left">
