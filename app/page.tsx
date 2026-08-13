@@ -4,11 +4,7 @@ import Link from 'next/link';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
 
-const baseStarfield = shaderExamples.find(s => s.title === 'Starfield')?.code || '';
-const heroShaderCode = baseStarfield.replace(
-    'return half4(',
-    'col *= 0.3; // reduce brightness for hero readability\n    return half4('
-);
+const heroShaderCode = shaderExamples.find(s => s.title === 'Starfield')?.code || '';
 
 function ShaderPreview({ code }: { code: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -273,16 +269,20 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-black">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
+    <div className="min-h-screen relative text-zinc-900 dark:text-zinc-100">
+      {/* Fixed background for the entire page */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-black">
         <HeroShaderBackground code={heroShaderCode} />
+      </div>
+
+      <div className="relative z-10">
+        {/* Hero Section */}
+        <div className="relative overflow-hidden">
 
         {/* subtle color wash (keeps hue) */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/8 via-pink-600/6 to-blue-600/8 pointer-events-none" />
 
-        {/* darker veil for contrast — tune the opacity */}
-        <div className="absolute inset-0 bg-black/45 backdrop-blur-sm pointer-events-none" />
+        {/* darker veil for contrast — removed per user request */}
 
         {/* content above everything */}
         <div className="relative z-20 max-w-7xl mx-auto px-6 py-24 sm:py-32">
@@ -323,7 +323,7 @@ export default function Home() {
       {/* Features Section */}
       <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm">
+          <div className="p-8 bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg">
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mb-4">
               <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -337,7 +337,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm">
+          <div className="p-8 bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg">
             <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-lg flex items-center justify-center mb-4">
               <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -351,7 +351,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="p-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm">
+          <div className="p-8 bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl shadow-lg">
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mb-4">
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
@@ -383,9 +383,9 @@ export default function Home() {
             <Link
               key={idx}
               href={`/editor?preset=${idx}`}
-              className="group relative bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+              className="group relative bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
             >
-              <div className="aspect-4/3 bg-zinc-900">
+              <div className="aspect-4/3 bg-black/50">
                 <ShaderPreview code={example.code} />
               </div>
               <div className="p-6">
@@ -466,6 +466,7 @@ export default function Home() {
         </div>
       </div>
 
+      </div>
     </div>
   );
 }
