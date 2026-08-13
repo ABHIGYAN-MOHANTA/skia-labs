@@ -1,23 +1,21 @@
-# 🌌 **Skia Labs — SKSL Shader Playground**
+# 🌌 **Skia Labs SKSL Shader Playground**
 
-A beautiful, fast, web-based playground for **Skia’s Shader Language (SKSL)**.
-Write, preview, and share shaders — all rendered with **CanvasKit (Skia WebAssembly)** and powered by **Next.js** + **Monaco Editor**.
+A beautiful, fast, web-based playground for **Skia's Shader Language (SKSL)**.
+Write, preview, and share shaders, all rendered with **CanvasKit (Skia WebAssembly)** and powered by **Next.js**, **Monaco Editor**, and **Firebase**.
 
 Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 
 <table>
   <tr>
     <td>
-      <img src="https://github.com/user-attachments/assets/d84d3d0c-b9bf-4379-9653-aa86c4e6354c" width="400">
+      <img src="./pics/pic1.png" width="400">
     </td>
     <td style="width: 2px; background-color: #ccc;"></td>
     <td>
-      <img src="https://github.com/user-attachments/assets/7c934450-a4b8-4732-ae4e-55088636213c" width="400">
+      <img src="./pics/pic2.png" width="400">
     </td>
   </tr>
 </table>
-
-
 
 ## ✨ **Features**
 
@@ -26,6 +24,13 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 * Powered by **CanvasKit WASM** for native Skia rendering.
 * Instant hot-reload as you type.
 * Supports animated uniforms (`iTime`, `iResolution`).
+
+### 🌐 Firebase Community Hub
+
+* **Social Features**: Publish your shaders directly to the community gallery, powered by Cloud Firestore.
+* **Authentication**: Seamless Google Sign-in to manage your creations.
+* **Interaction**: Like your favorite shaders and leave comments for authors.
+* **Smart Performance**: The community feed features infinite scrolling pagination and lazy-loaded WebGL contexts to keep mobile performance buttery smooth.
 
 ### 🧠 Monaco Editor with SKSL Language Support
 
@@ -37,30 +42,22 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 ### 🔀 Split-View Shader Editor
 
 * Drag-resize editor & preview
-* Fully responsive
+* Fully responsive and touch-friendly
 * Snap-safe (min widths enforced)
 
-### 🔗 One-Click Sharing
+### 🔗 Easy Sharing
 
-* Encodes shaders into URL for instant share links
+* Save your work to the cloud and generate an instant share link
 * Copy shader code easily
-* No backend required
-
-### 🗂️ Gallery of Example Shaders
-
-* Prebuilt examples
-* Launch directly into editor
-* Great for learning SKSL
 
 ### 💻 Powered by Modern Tech
 
 * **Next.js (App Router)**
 * **CanvasKit (Skia)**
 * **Monaco Editor**
+* **Firebase (Auth & Firestore)**
 * **TypeScript**
 * **Tailwind CSS**
-
-
 
 ## 🏗️ **Tech Stack**
 
@@ -69,9 +66,8 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 | Frontend         | Next.js, React, Tailwind CSS                  |
 | Shader Rendering | CanvasKit / Skia WASM                         |
 | Code Editing     | Monaco Editor w/ custom SKSL language         |
-| State & Utils    | React hooks, custom debounce & resizing logic |
-
-
+| Backend & DB     | Firebase Authentication and Cloud Firestore   |
+| Optimization     | IntersectionObserver WebGL Lazy Loading       |
 
 ## 📦 **Installation & Setup**
 
@@ -90,6 +86,19 @@ npm install
 pnpm install
 ```
 
+Configure Firebase:
+1. Create a Firebase project and add a Web App.
+2. Enable Firestore and Google Authentication.
+3. Create a `.env.local` file based on your Firebase configuration:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY="..."
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="..."
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="..."
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="..."
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="..."
+NEXT_PUBLIC_FIREBASE_APP_ID="..."
+```
+
 Run the dev server:
 
 ```sh
@@ -102,19 +111,16 @@ Visit:
 http://localhost:3000
 ```
 
-
-
 ## 🧩 **Project Structure**
 
 ```
 /app
-  /editor       → The full shader editor page
-  /components   → Shared UI components and shader logic
-  /gallery      → Shader examples
-/public         → Static assets (screenshots, icons)
+  /editor       -> The full shader editor page
+  /community    -> Community gallery and social feed
+  /components   -> Shared UI components and shader logic
+/lib            -> CanvasKit loaders and Firebase setup
+/public         -> Static assets (screenshots, icons)
 ```
-
-
 
 ## 🎛️ **Supported Uniforms**
 
@@ -124,8 +130,6 @@ Skia Labs automatically provides:
 | ------------- | -------- | ----------------------- |
 | `iTime`       | `float`  | Elapsed time in seconds |
 | `iResolution` | `float2` | Canvas width & height   |
-
-
 
 ## 🗜️ **How Shaders Run (Under the Hood)**
 
@@ -147,17 +151,16 @@ A clean render loop ensures:
 
 * smooth animation
 * proper cleanup
-* no WASM memory leaks
-
-
+* zero WASM memory leaks
+* lazy initialization only when visible on screen
 
 ## 🤝 **Contributing**
 
 Contributions are welcome!
 
-### To add a new shader example:
+### To add a new shader preset:
 
-1. Open `shaderExamples` array in `Home.tsx`
+1. Open `app/shaderExamples.ts`
 2. Add:
 
 ```ts
@@ -168,7 +171,6 @@ Contributions are welcome!
 ```
 
 3. Submit a PR 🚀
-
 
 ## 🐛 **Reporting Bugs**
 
@@ -182,18 +184,14 @@ Please include:
 * steps to reproduce
 * shader code (if relevant)
 
-
-
 ## 📄 **License**
 
-MIT License — free to use, modify, and build upon.
-
+MIT License, free to use, modify, and build upon.
 
 ## ⭐ **Support the Project**
 
 If you like this project, consider starring the repo:
 
 👉 [skia-labs](https://github.com/ABHIGYAN-MOHANTA/skia-labs) ⭐
-
 
 ## **Made with passion for shaders and graphics.**
