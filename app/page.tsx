@@ -4,22 +4,11 @@ import Link from 'next/link';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
 
-const heroShaderCode = `// kind=shader
-// Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
-uniform float iTime;
-uniform float2 iResolution;
-half4 main(float2 fragCoord) {
-    float2 uv = fragCoord / iResolution.xy;
-    float pattern = sin(uv.x * 20.0 + iTime) * cos(uv.y * 20.0 + iTime);
-    float gradient = uv.x;
-    float combined = pattern * gradient;
-    float3 col = float3(combined);
-
-    // reduce brightness so the hero text remains readable
-    col *= 0.5;
-
-    return half4(col, 1.0);
-}`;
+const baseStarfield = shaderExamples.find(s => s.title === 'Starfield')?.code || '';
+const heroShaderCode = baseStarfield.replace(
+    'return half4(',
+    'col *= 0.3; // reduce brightness for hero readability\n    return half4('
+);
 
 function ShaderPreview({ code }: { code: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
