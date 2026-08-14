@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
@@ -9,32 +9,69 @@ import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Navbar } from '@/components/Navbar';
 
 function ShaderPreview({ code }: { code: string }) {
-  const [canvasRef, isIntersecting] = useIntersectionObserver<HTMLCanvasElement>();
+  const [containerRef, isIntersecting] = useIntersectionObserver<HTMLDivElement>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
-  const [isVisible, setIsVisible] = useState(true);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    const handleVisibilityChange = () => setIsVisible(document.visibilityState === 'visible');
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
-  useEffect(() => {
-    if (isIntersecting) {
+    if (isIntersecting && !canvasKit) {
       loadCanvasKit().then(setCanvasKit).catch(console.error);
     }
-  }, [isIntersecting]);
+  }, [isIntersecting, canvasKit]);
 
   useEffect(() => {
-    if (!canvasKit || !canvasRef.current || !isIntersecting || !isVisible) return;
+    if (thumbnail || isHovered || !canvasKit || !isIntersecting) return;
+    
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 400;
+    tempCanvas.height = 300;
 
-    const canvas = canvasRef.current;
-    const surface = canvasKit.MakeCanvasSurface(canvas);
+    let surface = canvasKit.MakeCanvasSurface(tempCanvas);
+    
     if (!surface) return;
 
     let effect: RuntimeEffect | null = null;
     let shader: Shader | null = null;
-    let animationId: number | null = null;
+    let paint: any = null;
+
+    try {
+      effect = canvasKit.RuntimeEffect.Make(code);
+      if (effect) {
+        const skcanvas = surface.getCanvas();
+        paint = new canvasKit.Paint();
+        const uniforms = new Float32Array([1.5, tempCanvas.width, tempCanvas.height]);
+        shader = effect.makeShader(uniforms);
+        paint.setShader(shader);
+        
+        skcanvas.clear(canvasKit.WHITE);
+        skcanvas.drawPaint(paint);
+        surface.flush();
+
+        setThumbnail(tempCanvas.toDataURL('image/jpeg', 0.85));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (paint) paint.delete();
+      if (shader) shader.delete();
+      if (effect) effect.delete();
+      if (surface) surface.delete();
+    }
+  }, [canvasKit, code, isIntersecting, thumbnail, isHovered]);
+
+  useEffect(() => {
+    if (!isHovered || !canvasKit || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    let surface = canvasKit.MakeCanvasSurface(canvas);
+    if (!surface) return;
+
+    let effect: RuntimeEffect | null = null;
+    let shader: Shader | null = null;
+    let paint: any = null;
+    let animationId: number;
     let isActive = true;
     const startTime = Date.now();
 
@@ -42,24 +79,16 @@ function ShaderPreview({ code }: { code: string }) {
       effect = canvasKit.RuntimeEffect.Make(code);
       if (!effect) return;
 
-      const draw = () => {
-        if (!isActive || !effect) return;
+      paint = new canvasKit.Paint();
 
+      const draw = () => {
+        if (!isActive || !effect || !surface) return;
         try {
           const skcanvas = surface.getCanvas();
-          const paint = new canvasKit.Paint();
           const currentTime = (Date.now() - startTime) / 1000;
-          const uniforms = new Float32Array([
-            currentTime,
-            canvas.width,
-            canvas.height
-          ]);
-
-          if (shader) {
-            shader.delete();
-            shader = null;
-          }
-
+          const uniforms = new Float32Array([currentTime, canvas.width, canvas.height]);
+          
+          if (shader) shader.delete();
           shader = effect.makeShader(uniforms);
           paint.setShader(shader);
 
@@ -67,16 +96,11 @@ function ShaderPreview({ code }: { code: string }) {
           skcanvas.drawPaint(paint);
           surface.flush();
 
-          paint.delete();
-
-          if (isActive) {
-            animationId = requestAnimationFrame(draw);
-          }
+          if (isActive) animationId = requestAnimationFrame(draw);
         } catch {
           isActive = false;
         }
       };
-
       draw();
     } catch {
       console.error('Shader error');
@@ -84,20 +108,31 @@ function ShaderPreview({ code }: { code: string }) {
 
     return () => {
       isActive = false;
-      if (animationId !== null) cancelAnimationFrame(animationId);
+      if (animationId) cancelAnimationFrame(animationId);
+      if (paint) paint.delete();
       if (shader) shader.delete();
       if (effect) effect.delete();
-      surface.delete();
+      if (surface) surface.delete();
     };
-  }, [canvasKit, code, isIntersecting, isVisible]);
+  }, [canvasKit, code, isHovered]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={400}
-      height={300}
-      className="w-full h-full object-cover"
-    />
+    <div 
+      ref={containerRef}
+      className="w-full h-full relative overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {thumbnail && (
+        <img src={thumbnail} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-0' : 'opacity-100'}`} alt="Shader preview" />
+      )}
+      <canvas
+        ref={canvasRef}
+        width={400}
+        height={300}
+        className={`w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
   );
 }
 

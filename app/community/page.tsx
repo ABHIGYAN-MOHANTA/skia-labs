@@ -32,89 +32,130 @@ interface Comment {
 }
 
 function ShaderPreview({ code }: { code: string }) {
-    const [canvasRef, isIntersecting] = useIntersectionObserver<HTMLCanvasElement>();
-    const [isVisible, setIsVisible] = useState(true);
+    const [containerRef, isIntersecting] = useIntersectionObserver<HTMLDivElement>();
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
+    const [thumbnail, setThumbnail] = useState<string | null>(null);
+    const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
-        const handleVisibilityChange = () => setIsVisible(document.visibilityState === 'visible');
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
-    
-    useEffect(() => {
-        if (!isIntersecting || !isVisible) return;
+        if (isIntersecting && !canvasKit) {
+            loadCanvasKit().then(setCanvasKit).catch(console.error);
+        }
+    }, [isIntersecting, canvasKit]);
 
-        let ck: CanvasKit;
-        let surface: any;
+    useEffect(() => {
+        if (thumbnail || isHovered || !canvasKit || !isIntersecting) return;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 400;
+        tempCanvas.height = 225;
+        
+        let surface = canvasKit.MakeCanvasSurface(tempCanvas);
+        
+        if (!surface) return;
+
         let effect: RuntimeEffect | null = null;
         let shader: Shader | null = null;
-        let animationFrameId: number;
-        let startTime = Date.now();
+        let paint: any = null;
+
+        try {
+            effect = canvasKit.RuntimeEffect.Make(code);
+            if (effect) {
+                const skcanvas = surface.getCanvas();
+                paint = new canvasKit.Paint();
+                const uniforms = new Float32Array([1.5, tempCanvas.width, tempCanvas.height]);
+                shader = effect.makeShader(uniforms);
+                paint.setShader(shader);
+                
+                skcanvas.clear(canvasKit.WHITE);
+                skcanvas.drawPaint(paint);
+                surface.flush();
+
+                setThumbnail(tempCanvas.toDataURL('image/jpeg', 0.85));
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (paint) paint.delete();
+            if (shader) shader.delete();
+            if (effect) effect.delete();
+            if (surface) surface.delete();
+        }
+    }, [canvasKit, code, isIntersecting, thumbnail, isHovered]);
+
+    useEffect(() => {
+        if (!isHovered || !canvasKit || !canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+        let surface = canvasKit.MakeCanvasSurface(canvas);
+        if (!surface) return;
+
+        let effect: RuntimeEffect | null = null;
+        let shader: Shader | null = null;
+        let paint: any = null;
+        let animationId: number;
         let isActive = true;
+        const startTime = Date.now();
 
-        const init = async () => {
-            ck = await loadCanvasKit();
-            if (!isActive) return;
-
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            
-            surface = ck.MakeCanvasSurface(canvas as any);
-            if (!surface) return;
-
-            effect = ck.RuntimeEffect.Make(code);
+        try {
+            effect = canvasKit.RuntimeEffect.Make(code);
             if (!effect) return;
 
-            const drawFrame = () => {
-                if (!isActive || !surface || !effect || !canvasRef.current) return;
-                
+            paint = new canvasKit.Paint();
+
+            const draw = () => {
+                if (!isActive || !effect || !surface) return;
                 try {
                     const skcanvas = surface.getCanvas();
-                    const paint = new ck.Paint();
-                    const time = (Date.now() - startTime) / 1000;
+                    const currentTime = (Date.now() - startTime) / 1000;
+                    const uniforms = new Float32Array([currentTime, canvas.width, canvas.height]);
                     
-                    shader = effect.makeShader([
-                        time,
-                        canvasRef.current.width,
-                        canvasRef.current.height
-                    ]);
-                    
-                    if (shader) {
-                        paint.setShader(shader);
-                        skcanvas.drawRect(ck.LTRBRect(0, 0, canvasRef.current.width, canvasRef.current.height), paint);
-                        surface.flush();
-                        shader.delete();
-                        shader = null;
-                    }
-                    paint.delete();
-                    animationFrameId = requestAnimationFrame(drawFrame);
-                } catch (err) {
-                    console.error("Shader render error:", err);
+                    if (shader) shader.delete();
+                    shader = effect.makeShader(uniforms);
+                    paint.setShader(shader);
+
+                    skcanvas.clear(canvasKit.WHITE);
+                    skcanvas.drawPaint(paint);
+                    surface.flush();
+
+                    if (isActive) animationId = requestAnimationFrame(draw);
+                } catch {
                     isActive = false;
                 }
             };
-            
-            drawFrame();
-        };
-
-        init();
+            draw();
+        } catch {
+            console.error('Shader error');
+        }
 
         return () => {
             isActive = false;
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (animationId) cancelAnimationFrame(animationId);
+            if (paint) paint.delete();
             if (shader) shader.delete();
             if (effect) effect.delete();
             if (surface) surface.delete();
         };
-    }, [code, isIntersecting, isVisible]);
+    }, [canvasKit, code, isHovered]);
 
     return (
-        <canvas 
-            ref={canvasRef} 
-            className="w-full h-full object-cover"
-            width={400}
-            height={225}
-        />
+        <div 
+            ref={containerRef}
+            className="w-full h-full relative overflow-hidden"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {thumbnail && (
+                <img src={thumbnail} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-0' : 'opacity-100'}`} alt="Shader preview" />
+            )}
+            <canvas 
+                ref={canvasRef} 
+                className={`w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                width={400}
+                height={225}
+            />
+        </div>
     );
 }
 
@@ -329,10 +370,14 @@ export default function CommunityPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {shaders.map(shader => (
                                 <div key={shader.id} className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col group">
-                                    <div className="aspect-video relative bg-zinc-100 dark:bg-black">
+                                    <Link 
+                                        href={`/editor?id=${shader.id}`}
+                                        onClick={() => posthog.capture('button_clicked', { button_name: 'Open in Editor Thumbnail - Community', shader_id: shader.id })}
+                                        className="aspect-video relative bg-zinc-100 dark:bg-black block cursor-pointer"
+                                    >
                                         <ShaderPreview code={shader.code} />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                                    </div>
+                                    </Link>
                                     <div className="p-5 flex flex-col flex-1">
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
