@@ -8,6 +8,7 @@ import { shaderExamples } from '../shaderExamples';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import posthog from 'posthog-js';
 
 const registerSkslLanguage = (monaco: Monaco) => {
     const languageId = 'sksl';
@@ -445,6 +446,7 @@ export default function EditorPage() {
     }, [code, ensureShareId, hasUserEdited, shareId, user]);
 
     const copyShareLink = async () => {
+        posthog.capture('button_clicked', { button_name: 'Save & Copy link' });
         if (!baseUrl || !code || sharing || !user) {
             if (!user) alert("Please sign in to share shaders.");
             return;
@@ -503,6 +505,7 @@ export default function EditorPage() {
     };
 
     const shareToCommunity = async () => {
+        posthog.capture('button_clicked', { button_name: 'Share to Community - Publish' });
         if (!code || sharingToCommunity || !communityTitle || !user) return;
         try {
             setSharingToCommunity(true);
@@ -570,6 +573,7 @@ export default function EditorPage() {
     };
 
     const copyCode = async () => {
+        posthog.capture('button_clicked', { button_name: 'Copy code' });
         if (!code) return;
         try {
             if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -746,7 +750,10 @@ export default function EditorPage() {
                                 </button>
                                 {user ? (
                                     <button
-                                        onClick={() => setShowCommunityModal(true)}
+                                        onClick={() => {
+                                            posthog.capture('button_clicked', { button_name: 'Share to Community - Open Modal' });
+                                            setShowCommunityModal(true);
+                                        }}
                                         className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm font-medium rounded-md shadow-sm transition-all"
                                     >
                                         Share to Community

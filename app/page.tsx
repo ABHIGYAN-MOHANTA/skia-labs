@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
 import { loadCanvasKit } from '@/lib/canvaskit';
@@ -272,18 +273,21 @@ export default function Home() {
             <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[340px] sm:max-w-none mx-auto">
               <Link
                 href="/editor"
+                onClick={() => posthog.capture('button_clicked', { button_name: 'Launch Editor - Hero' })}
                 className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(236,72,153,0.5)] hover:shadow-[0_0_30px_-5px_rgba(236,72,153,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
               >
                 Launch Editor
               </Link>
               <Link
                 href="/community"
+                onClick={() => posthog.capture('button_clicked', { button_name: 'Community - Hero' })}
                 className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
               >
                 Community
               </Link>
               <a
                 href="#gallery"
+                onClick={() => posthog.capture('button_clicked', { button_name: 'View Examples - Hero' })}
                 className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-white/20 bg-white/5 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-white/10 transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
               >
                 <span className="hidden sm:inline mr-1">View</span> Examples
@@ -291,6 +295,7 @@ export default function Home() {
               <a
                 href="/sksl-shader-writer.zip"
                 download
+                onClick={() => posthog.capture('button_clicked', { button_name: 'Download Agent Skill - Hero' })}
                 className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-purple-500/30 bg-purple-500/10 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-purple-500/20 hover:scale-[1.02] transition-all duration-300 z-30 flex items-center justify-center gap-1.5 text-[13px] sm:text-base"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,6 +374,7 @@ export default function Home() {
             <Link
               key={idx}
               href={`/editor?preset=${idx}`}
+              onClick={() => posthog.capture('button_clicked', { button_name: 'Shader Gallery Item', example_title: example.title })}
               className="group relative bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
             >
               <div className="aspect-4/3 bg-black/50">
@@ -437,6 +443,7 @@ export default function Home() {
             href="https://github.com/ABHIGYAN-MOHANTA/skia-labs"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => posthog.capture('button_clicked', { button_name: 'GitHub Icon - Footer' })}
             className="text-zinc-400 hover:text-zinc-200 transition-all duration-75 flex items-center gap-2 hover:scale-105"
           >
             <svg

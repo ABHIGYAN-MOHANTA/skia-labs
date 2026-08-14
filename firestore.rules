@@ -26,8 +26,8 @@ service cloud.firestore {
     match /comments/{commentId} {
       // Anyone can read comments
       allow read: if true;
-      // Anyone can post a comment
-      allow create: if true;
+      // Only authenticated users can post a comment
+      allow create: if request.auth != null;
       // Only the author can delete their comment
       allow delete: if request.auth != null && resource.data.authorUid == request.auth.uid;
     }

@@ -8,6 +8,7 @@ import { collection, getDocs, doc, updateDoc, increment, setDoc, query, where, a
 import { useAuth } from '@/contexts/AuthContext';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { shaderExamples } from '../shaderExamples';
+import posthog from 'posthog-js';
 
 interface ShaderDoc {
     id: string;
@@ -122,7 +123,7 @@ export default function CommunityPage() {
     const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-    const { user } = useAuth();
+    const { user, signIn } = useAuth();
     
     // Comments modal state
     const [activeShaderId, setActiveShaderId] = useState<string | null>(null);
@@ -304,7 +305,7 @@ export default function CommunityPage() {
                             <p className="text-zinc-500 dark:text-zinc-400">Explore and remix creations from the community.</p>
                         </div>
                     </div>
-                    <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap">
+                    <Link href="/" onClick={() => posthog.capture('button_clicked', { button_name: 'Back to Home - Community' })} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         Back to Home
                     </Link>
@@ -350,7 +351,10 @@ export default function CommunityPage() {
                                         <div className="mt-auto pt-4 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
                                             <div className="flex gap-4">
                                                 <button 
-                                                    onClick={() => handleLike(shader.id)}
+                                                    onClick={() => {
+                                                        posthog.capture('button_clicked', { button_name: 'Like Shader', shader_id: shader.id });
+                                                        handleLike(shader.id);
+                                                    }}
                                                     className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${likedIds.has(shader.id) ? 'text-pink-500' : 'text-zinc-500 hover:text-pink-500 dark:text-zinc-400 dark:hover:text-pink-400'}`}
                                                 >
                                                     <svg className="w-5 h-5" fill={likedIds.has(shader.id) ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={likedIds.has(shader.id) ? 0 : 2}>
@@ -359,7 +363,10 @@ export default function CommunityPage() {
                                                     <span>{shader.likes}</span>
                                                 </button>
                                                 <button 
-                                                    onClick={() => openComments(shader.id)}
+                                                    onClick={() => {
+                                                        posthog.capture('button_clicked', { button_name: 'Discuss Shader', shader_id: shader.id });
+                                                        openComments(shader.id);
+                                                    }}
                                                     className="flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-blue-500 dark:text-zinc-400 dark:hover:text-blue-400 transition-colors"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -370,6 +377,7 @@ export default function CommunityPage() {
                                             </div>
                                             <Link 
                                                 href={`/editor?id=${shader.id}`}
+                                                onClick={() => posthog.capture('button_clicked', { button_name: 'Open in Editor - Community', shader_id: shader.id })}
                                                 className="text-sm font-semibold text-purple-600 dark:text-purple-400 hover:underline"
                                             >
                                                 {user && shader.authorUid === user.uid ? 'Edit' : 'Open in Editor'}
@@ -383,7 +391,10 @@ export default function CommunityPage() {
                         {hasMore && shaders.length > 0 && (
                             <div className="flex justify-center mt-8">
                                 <button
-                                    onClick={() => fetchShaders(true)}
+                                    onClick={() => {
+                                        posthog.capture('button_clicked', { button_name: 'Load More Shaders' });
+                                        fetchShaders(true);
+                                    }}
                                     disabled={loadingMore}
                                     className="px-6 py-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full font-medium shadow-sm hover:bg-zinc-800 dark:hover:bg-white transition-colors disabled:opacity-70 flex items-center gap-2"
                                 >
@@ -454,34 +465,36 @@ export default function CommunityPage() {
                         </div>
 
                         <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-                            <div className="flex flex-col gap-3">
-                                {!user && (
-                                    <input 
-                                        type="text"
-                                        placeholder="Your Name (optional)"
-                                        value={newCommentAuthor}
-                                        onChange={e => setNewCommentAuthor(e.target.value)}
-                                        className="w-full bg-white dark:bg-black border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                )}
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="text"
-                                        placeholder="Add a comment..."
-                                        value={newCommentText}
-                                        onChange={e => setNewCommentText(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && postComment()}
-                                        className="flex-1 bg-white dark:bg-black border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
+                            {user ? (
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text"
+                                            placeholder="Add a comment..."
+                                            value={newCommentText}
+                                            onChange={e => setNewCommentText(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && postComment()}
+                                            className="flex-1 bg-white dark:bg-black border border-zinc-300 dark:border-zinc-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <button 
+                                            onClick={postComment}
+                                            disabled={!newCommentText.trim()}
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                        >
+                                            Post
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex justify-center items-center py-2">
                                     <button 
-                                        onClick={postComment}
-                                        disabled={!newCommentText.trim()}
-                                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                        onClick={signIn}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition-colors shadow-lg shadow-blue-500/20"
                                     >
-                                        Post
+                                        Sign in to comment
                                     </button>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

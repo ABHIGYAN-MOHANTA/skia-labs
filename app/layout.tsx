@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { NavbarWrapper } from "@/components/NavbarWrapper";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PHProvider } from "./providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -66,10 +67,12 @@ gtag('config', 'G-TK598JJNS8');`}
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <NavbarWrapper />
-          {children}
-        </AuthProvider>
+        <PHProvider>
+          <AuthProvider>
+            <NavbarWrapper />
+            {children}
+          </AuthProvider>
+        </PHProvider>
       </body>
     </html>
   );
