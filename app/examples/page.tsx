@@ -15,13 +15,8 @@ function ShaderPreview({ code }: { code: string }) {
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768 && window.matchMedia("(hover: none)").matches);
-  }, []);
-
-  const isPlaying = isHovered || (isMobile && isCentered);
+  const isPlaying = isHovered || isCentered;
 
   useEffect(() => {
     if (isIntersecting && !canvasKit) {
