@@ -67,8 +67,18 @@ function HeroShaderBackground({ code }: { code: string }) {
       effect = canvasKit.RuntimeEffect.Make(code);
       if (!effect) return;
 
-      const draw = () => {
+      let lastDrawTime = 0;
+      const frameInterval = 1000 / 30; // 30 FPS cap
+
+      const draw = (time: number) => {
         if (!isActive || !effect) return;
+
+        if (isActive) {
+          animationId = requestAnimationFrame(draw);
+        }
+
+        if (time - lastDrawTime < frameInterval) return;
+        lastDrawTime = time;
 
         try {
           const skcanvas = surface.getCanvas();
@@ -93,16 +103,12 @@ function HeroShaderBackground({ code }: { code: string }) {
           surface.flush();
 
           paint.delete();
-
-          if (isActive) {
-            animationId = requestAnimationFrame(draw);
-          }
         } catch {
           isActive = false;
         }
       };
 
-      draw();
+      animationId = requestAnimationFrame(draw);
     } catch {
       console.error('Hero shader error');
     }
@@ -154,9 +160,6 @@ export default function Home() {
       <div className="relative z-10">
         {/* Hero Section */}
         <div className="relative overflow-hidden">
-
-        {/* subtle color wash (keeps hue) */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/8 via-pink-600/6 to-blue-600/8 pointer-events-none" />
 
         {/* darker veil for contrast — removed per user request */}
 

@@ -90,8 +90,16 @@ function ShaderPreview({ code }: { code: string }) {
 
       paint = new canvasKit.Paint();
 
-      const draw = () => {
+      let lastDrawTime = 0;
+      const frameInterval = 1000 / 30; // 30 FPS cap
+
+      const draw = (time: number) => {
         if (!isActive || !effect || !surface) return;
+        if (isActive) animationId = requestAnimationFrame(draw);
+
+        if (time - lastDrawTime < frameInterval) return;
+        lastDrawTime = time;
+
         try {
           const skcanvas = surface.getCanvas();
           const currentTime = (Date.now() - startTime) / 1000;
@@ -104,13 +112,11 @@ function ShaderPreview({ code }: { code: string }) {
           skcanvas.clear(canvasKit.WHITE);
           skcanvas.drawPaint(paint);
           surface.flush();
-
-          if (isActive) animationId = requestAnimationFrame(draw);
         } catch {
           isActive = false;
         }
       };
-      draw();
+      animationId = requestAnimationFrame(draw);
     } catch {
       console.error('Shader error');
     }
