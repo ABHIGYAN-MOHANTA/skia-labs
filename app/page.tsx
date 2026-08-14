@@ -251,49 +251,52 @@ export default function Home() {
 
         {/* content above everything */}
         <div className="relative z-20 max-w-7xl mx-auto px-6 pt-32 pb-24 sm:pt-40 sm:pb-32">
-          <div className="text-center space-y-8">
+          <div className="text-center space-y-8 relative">
+            {/* Soft dark glow to ensure text readability against busy shaders */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[120%] bg-black/50 blur-[60px] -z-10 pointer-events-none rounded-[100%]"></div>
+            
             <h1 className="text-6xl sm:text-7xl font-extrabold tracking-tight">
               <span
                 className="bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent
-                           drop-shadow-[0_12px_30px_rgba(0,0,0,0.55)]"
+                           drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] drop-shadow-[0_12px_30px_rgba(0,0,0,0.6)]"
                 style={{ WebkitTextStroke: '0.8px rgba(0,0,0,0.25)' }}
               >
                 Skia Labs
               </span>
             </h1>
 
-            <p className="max-w-2xl mx-auto text-xl text-zinc-200/95">
-              Ditch bloated Lottie files. Build high-performance, interactive SKSL shaders for your React Native and Flutter apps in real-time. The ultimate creative coding playground for mobile developers.
+            <p className="max-w-2xl mx-auto text-xl font-medium text-zinc-100 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+              App looking bland? Want animations, but tired of massive Lottie files tanking your performance? Stop choking your app with bloated JSONs. Skia-powered shaders run at 60fps, weigh nothing, and look incredible. Build, test, and tweak SKSL right here, then drop it directly into your React Native or Flutter app.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[280px] sm:max-w-none mx-auto">
+            <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[340px] sm:max-w-none mx-auto">
               <Link
                 href="/editor"
-                className="w-full sm:w-auto text-center px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
+                className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(236,72,153,0.5)] hover:shadow-[0_0_30px_-5px_rgba(236,72,153,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
               >
                 Launch Editor
               </Link>
               <Link
                 href="/community"
-                className="w-full sm:w-auto text-center px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 z-30"
+                className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
               >
                 Community
               </Link>
               <a
                 href="#gallery"
-                className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-zinc-100 font-semibold rounded-full hover:bg-white/10 transition-all duration-200 z-30"
+                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-white/20 bg-white/5 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-white/10 transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
               >
-                View Examples
+                <span className="hidden sm:inline mr-1">View</span> Examples
               </a>
               <a
                 href="/sksl-shader-writer.zip"
                 download
-                className="w-full sm:w-auto text-center px-8 py-4 border-2 border-purple-500/50 bg-purple-500/10 backdrop-blur-sm text-zinc-100 font-semibold rounded-full hover:bg-purple-500/20 hover:scale-105 transition-all duration-200 z-30 flex items-center justify-center gap-2"
+                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-purple-500/30 bg-purple-500/10 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-purple-500/20 hover:scale-[1.02] transition-all duration-300 z-30 flex items-center justify-center gap-1.5 text-[13px] sm:text-base"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Download Agent Skill
+                <span><span className="hidden sm:inline">Download </span>Agent Skill</span>
               </a>
             </div>
           </div>
@@ -348,12 +351,15 @@ export default function Home() {
       </div>
 
       {/* Gallery Section */}
-      <div id="gallery" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">
+      <div id="gallery" className="max-w-7xl mx-auto px-6 py-20 relative">
+        <div className="text-center mb-12 relative">
+          {/* Soft dark glow to ensure text readability */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg h-[150%] bg-black/50 blur-[50px] -z-10 pointer-events-none rounded-[100%]"></div>
+          
+          <h2 className="text-4xl font-bold text-zinc-100 mb-4 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
             Shader Gallery
           </h2>
-          <p className="text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="text-lg font-medium text-zinc-200 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
             Explore these example shaders to get started
           </p>
         </div>
@@ -431,10 +437,10 @@ export default function Home() {
             href="https://github.com/ABHIGYAN-MOHANTA/skia-labs"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-2"
+            className="text-zinc-400 hover:text-zinc-200 transition-all duration-75 flex items-center gap-2 hover:scale-105"
           >
             <svg
-              className="w-6 h-6 hover:scale-110 transition-transform"
+              className="w-6 h-6"
               viewBox="0 0 24 24"
               fill="currentColor"
               aria-hidden="true"
