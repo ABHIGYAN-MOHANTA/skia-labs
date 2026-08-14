@@ -84,6 +84,10 @@ function ShaderPreview({ code }: { code: string }) {
             }
         } catch (e) {
             console.error(e);
+        } finally {
+            if (paint) paint.delete();
+            if (shader) shader.delete();
+            if (effect) effect.delete();
             if (surface) surface.delete();
 
             const gl = tempCanvas.getContext('webgl2') || tempCanvas.getContext('webgl');
