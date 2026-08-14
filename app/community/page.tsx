@@ -5,7 +5,9 @@ import { loadCanvasKit } from '@/lib/canvaskit';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, updateDoc, increment, setDoc, query, where, arrayUnion, arrayRemove, deleteDoc, orderBy, limit, startAfter, QueryDocumentSnapshot } from 'firebase/firestore';
+import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
+import { SignInModal } from '@/components/SignInModal';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { shaderExamples } from '../shaderExamples';
 import posthog from 'posthog-js';
@@ -123,6 +125,7 @@ export default function CommunityPage() {
     const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+    const [showSignInModal, setShowSignInModal] = useState(false);
     const { user, signIn } = useAuth();
     
     // Comments modal state
@@ -190,7 +193,7 @@ export default function CommunityPage() {
 
     const handleLike = async (id: string) => {
         if (!user) {
-            alert("Please sign in to like shaders!");
+            setShowSignInModal(true);
             return;
         }
 
@@ -297,6 +300,7 @@ export default function CommunityPage() {
 
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-8 pt-24 sm:p-12 sm:pt-28">
+            <Navbar />
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col-reverse sm:flex-row justify-between items-start sm:items-center gap-6 sm:gap-0 mb-12">
                     <div className="flex justify-between items-center mb-8">
@@ -531,6 +535,12 @@ export default function CommunityPage() {
                     </div>
                 </div>
             )}
+            <SignInModal 
+                isOpen={showSignInModal}
+                onClose={() => setShowSignInModal(false)}
+                title="Sign in to Like"
+                message="You need to sign in with your Google account to like community shaders."
+            />
         </div>
     );
 }

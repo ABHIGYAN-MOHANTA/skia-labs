@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import posthog from 'posthog-js';
+import { SignInModal } from '@/components/SignInModal';
 
 const registerSkslLanguage = (monaco: Monaco) => {
     const languageId = 'sksl';
@@ -271,6 +272,7 @@ export default function EditorPage() {
     const [shareId, setShareId] = useState<string | null>(null);
     const [hasUserEdited, setHasUserEdited] = useState(false);
     const [isFetchingShader, setIsFetchingShader] = useState(() => !!searchParams?.get('id'));
+    const [showSignInModal, setShowSignInModal] = useState(false);
 
     useEffect(() => {
         // Suppress annoying harmless "Canceled" errors from Monaco Editor
@@ -466,7 +468,7 @@ export default function EditorPage() {
     const copyShareLink = async () => {
         posthog.capture('button_clicked', { button_name: 'Save & Copy link' });
         if (!baseUrl || !code || sharing || !user) {
-            if (!user) alert("Please sign in to share shaders.");
+            if (!user) setShowSignInModal(true);
             return;
         }
         try {
@@ -862,6 +864,12 @@ export default function EditorPage() {
                     </div>
                 </div>
             )}
+            <SignInModal 
+                isOpen={showSignInModal}
+                onClose={() => setShowSignInModal(false)}
+                title="Sign in to Share"
+                message="You need to sign in with your Google account to save and share your amazing shaders with the world."
+            />
         </>
     );
 }
