@@ -198,7 +198,7 @@ export default function Home() {
               <Link
                 href="/examples"
                 onClick={() => posthog.capture('button_clicked', { button_name: 'View Examples - Hero' })}
-                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-white/20 bg-white/5 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-white/10 transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
+                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.8)] hover:scale-[1.02] transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
               >
                 <span className="hidden sm:inline mr-1">View</span> Examples
               </Link>
@@ -206,7 +206,7 @@ export default function Home() {
                 href="/sksl-shader-writer.zip"
                 download
                 onClick={() => posthog.capture('button_clicked', { button_name: 'Download Agent Skill - Hero' })}
-                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 border border-purple-500/30 bg-purple-500/10 backdrop-blur-md text-zinc-100 font-medium rounded-full hover:bg-purple-500/20 hover:scale-[1.02] transition-all duration-300 z-30 flex items-center justify-center gap-1.5 text-[13px] sm:text-base"
+                className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-fuchsia-600 to-rose-500 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(217,70,239,0.5)] hover:shadow-[0_0_30px_-5px_rgba(217,70,239,0.8)] hover:scale-[1.02] transition-all duration-300 z-30 flex items-center justify-center gap-1.5 text-[13px] sm:text-base"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
