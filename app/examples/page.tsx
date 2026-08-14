@@ -10,10 +10,18 @@ import { Navbar } from '@/components/Navbar';
 
 function ShaderPreview({ code }: { code: string }) {
   const [containerRef, isIntersecting] = useIntersectionObserver<HTMLDivElement>();
+  const [centerRef, isCentered] = useIntersectionObserver<HTMLDivElement>({ rootMargin: '-35% 0px -35% 0px' });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasKit, setCanvasKit] = useState<CanvasKit | null>(null);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(typeof window !== 'undefined' && window.matchMedia("(hover: none)").matches);
+  }, []);
+
+  const isPlaying = isHovered || (isMobile && isCentered);
 
   useEffect(() => {
     if (isIntersecting && !canvasKit) {
@@ -22,11 +30,11 @@ function ShaderPreview({ code }: { code: string }) {
   }, [isIntersecting, canvasKit]);
 
   useEffect(() => {
-    if (thumbnail || isHovered || !canvasKit || !isIntersecting) return;
+    if (thumbnail || isPlaying || !canvasKit || !isIntersecting) return;
     
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 400;
-    tempCanvas.height = 300;
+    tempCanvas.height = 225;
 
     let surface = canvasKit.MakeCanvasSurface(tempCanvas);
     
@@ -53,16 +61,18 @@ function ShaderPreview({ code }: { code: string }) {
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      if (paint) paint.delete();
-      if (shader) shader.delete();
-      if (effect) effect.delete();
       if (surface) surface.delete();
+
+      const gl = tempCanvas.getContext('webgl2') || tempCanvas.getContext('webgl');
+      if (gl) {
+        const ext = gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      }
     }
-  }, [canvasKit, code, isIntersecting, thumbnail, isHovered]);
+  }, [canvasKit, code, isIntersecting, thumbnail, isPlaying]);
 
   useEffect(() => {
-    if (!isHovered || !canvasKit || !canvasRef.current) return;
+    if (!isPlaying || !canvasKit || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     let surface = canvasKit.MakeCanvasSurface(canvas);
@@ -109,12 +119,15 @@ function ShaderPreview({ code }: { code: string }) {
     return () => {
       isActive = false;
       if (animationId) cancelAnimationFrame(animationId);
-      if (paint) paint.delete();
-      if (shader) shader.delete();
-      if (effect) effect.delete();
       if (surface) surface.delete();
+
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      if (gl) {
+        const ext = gl.getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      }
     };
-  }, [canvasKit, code, isHovered]);
+  }, [canvasKit, code, isPlaying]);
 
   return (
     <div 
@@ -123,15 +136,18 @@ function ShaderPreview({ code }: { code: string }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      <div ref={centerRef} className="absolute inset-0 pointer-events-none" />
       {thumbnail && (
-        <img src={thumbnail} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-0' : 'opacity-100'}`} alt="Shader preview" />
+        <img src={thumbnail} className={`absolute inset-0 w-full h-full object-cover z-10 ${isPlaying ? 'opacity-0 pointer-events-none' : 'opacity-100'}`} alt="Shader preview" />
       )}
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={300}
-        className={`w-full h-full object-cover transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
-      />
+      {isPlaying && (
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={225}
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        />
+      )}
     </div>
   );
 }
@@ -164,14 +180,25 @@ export default function ExamplesPage() {
               onClick={() => posthog.capture('button_clicked', { button_name: 'Shader Gallery Item', example_title: example.title })}
               className="group relative bg-white/10 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
             >
-              <div className="aspect-4/3 bg-black/50">
+              <div className="aspect-video bg-black/50">
                 <ShaderPreview code={example.code} />
               </div>
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                  {example.title}
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                    {example.title}
+                  </h3>
+                  {example.tag && (
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                      example.tag === 'Simple' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                      example.tag === 'Intermediate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
+                      'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
+                    }`}>
+                      {example.tag}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-zinc-500 dark:text-zinc-500">
                   Click to open in editor →
                 </p>
               </div>

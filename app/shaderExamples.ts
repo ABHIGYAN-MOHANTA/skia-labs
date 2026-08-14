@@ -1,11 +1,13 @@
 export type ShaderExample = {
   title: string;
   code: string;
+  tag?: 'Simple' | 'Intermediate' | 'Advanced';
 };
 
 export const shaderExamples: ShaderExample[] = [
   {
     title: 'Color Waves',
+    tag: 'Simple',
     code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
@@ -19,6 +21,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Pattern Gradient',
+    tag: 'Simple',
     code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
@@ -35,6 +38,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Psychedelic Tunnel',
+    tag: 'Simple',
     code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
@@ -61,6 +65,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Cloudy Sky',
+    tag: 'Intermediate',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -133,6 +138,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Hyper Tunnel',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -1008,165 +1014,8 @@ half4 main(
 `
   },
   {
-    title: 'Desert Dunes',
-    code: `// kind=shader
-uniform float iTime;
-uniform float2 iResolution;
-
-// --- utils ---
-float2 rot(float2 p, float a) {
-    float c = cos(a), s = sin(a);
-    return float2(p.x*c - p.y*s, p.x*s + p.y*c);
-}
-
-float hash21(float2 p) {
-    return fract(sin(dot(p, float2(127.1,311.7))) * 43758.5453);
-}
-
-float noise(float2 p) {
-    float2 i = floor(p);
-    float2 f = fract(p);
-    f = f*f*(3.0 - 2.0*f);
-    float a = hash21(i);
-    float b = hash21(i + float2(1.0,0.0));
-    float c = hash21(i + float2(0.0,1.0));
-    float d = hash21(i + float2(1.0,1.0));
-    return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
-}
-
-float fbm(float2 p) {
-    float v = 0.0;
-    float amp = 0.55;
-    p *= 0.8;
-    for (int i = 0; i < 5; i++) {
-        v += noise(p) * amp;
-        p *= 2.0;
-        amp *= 0.5;
-    }
-    return v;
-}
-
-float ridge(float2 p) {
-    float v = fbm(p * 2.0);
-    v += fbm(p * 5.7) * 0.5;
-    return 1.0 - abs(2.0 * fract(v) - 1.0);
-}
-
-float haze(float dist, float height) {
-    float f = exp(-dist * 0.12) * smoothstep(-1.2, 0.8, height);
-    return clamp(1.0 - f, 0.0, 1.0);
-}
-
-// --- main ---
-half4 main(float2 fragCoord) {
-
-    float2 uv = fragCoord / iResolution.xy;
-    float aspect = iResolution.x / iResolution.y;
-
-    float2 p = uv*2.0 - 1.0;
-    p.x *= aspect;
-
-    float t = iTime * 0.06;
-
-    // === BRIGHT SKY ===
-    float3 skyTop = float3(0.22,0.42,0.75);   // brighter blue
-    float3 skyMid = float3(1.00,0.76,0.45);   // bright peach
-    float skyBlend = smoothstep(1.0,-0.2,p.y);
-    float3 col = mix(skyTop, skyMid, skyBlend) * 1.25;  // boosted brightness
-
-    // === STRONGER SUN ===
-    float2 sunPos = float2(0.45,-0.15);
-    sunPos.x *= aspect;
-    float2 sunUV = p - sunPos;
-    float sunDist = length(sunUV);
-    float sunGlow = exp(-sunDist * 5.0);
-    col += float3(1.6,1.35,1.1) * sunGlow;   // brighter sun
-
-    // === SOFT HOT RAYS ===
-    float ray = max(0.0, 0.35 - abs(sunUV.y)*0.3);
-    col += float3(1.3,1.1,0.8) * ray * 0.12;
-
-    // === DUNE LAYERS (brightened) ===
-    const int LAYERS = 5;
-
-    float scales[5];
-    scales[0]=0.6; scales[1]=1.0; scales[2]=1.8; scales[3]=3.2; scales[4]=6.0;
-
-    float offsets[5];
-    offsets[0]=0.4; offsets[1]=0.05; offsets[2]=-0.1; offsets[3]=-0.45; offsets[4]=-0.8;
-
-    float speeds[5];
-    speeds[0]=0.02; speeds[1]=0.06; speeds[2]=0.12; speeds[3]=0.22; speeds[4]=0.35;
-
-    float amps[5];
-    amps[0]=0.20; amps[1]=0.42; amps[2]=0.70; amps[3]=0.95; amps[4]=1.45;
-
-    float3 dunes = float3(0.0);
-    float totalDepth = 0.0;
-
-    for (int i = 0; i < LAYERS; i++) {
-        float s = scales[i];
-        float yOff = offsets[i];
-        float sp = speeds[i];
-        float amp = amps[i];
-
-        float2 coord = (p + float2(t*sp*(0.5+float(i)*0.12),0.0)) * float2(s, s*0.6);
-        coord = rot(coord, 0.12 * float(i));
-
-        float base = fbm(coord * 0.8) * 0.8;
-        float ridg = ridge(coord * 4.0) * 0.18;
-        float height = yOff + base * amp + ridg;
-
-        float mask = smoothstep(height - 0.12, height + 0.08, -p.y);
-
-        float depth = float(i)/float(LAYERS-1);
-        float fog = mix(1.0,0.35,depth);
-
-        float3 sandBase = float3(1.10,0.92,0.67);   // brighter sand
-        float3 sandShade = float3(0.55,0.42,0.28);  // lighter shadows
-
-        float lit = 0.35 + 0.65 * clamp(dot(normalize(float3(0.0,1.0,0.1)), 
-                                        normalize(float3(sunPos.xy,-0.8))),
-                                        0.0, 1.0);
-
-        float3 layerColor = mix(sandShade, sandBase, lit);
-
-        float crest = smoothstep(0.02,0.18,ridg);
-        layerColor += crest * float3(1.2,1.0,0.75) * 0.18;
-
-        dunes += layerColor * mask * fog;
-        totalDepth += mask * fog;
-    }
-
-    if (totalDepth > 0.0) dunes /= totalDepth;
-
-    // bright horizon blend
-    float horizonFog = smoothstep(-0.4,0.3,p.y);
-    float duneMix = clamp(1.0 - horizonFog*0.05, 0.0, 1.0);
-
-    float3 scene = mix(col, dunes, duneMix);
-
-    // add subtle sparkle
-    float2 glintUV = p * float2(12.0,6.0) + float2(t*0.8,0.0);
-    float g = fbm(glintUV)*0.5 + ridge(glintUV*3.0)*0.35;
-    scene += float3(1.0,0.9,0.7) * pow(clamp(g,0.0,1.0), 3.0) * 0.08;
-
-    // gentle tone mapping (brighter)
-    scene = pow(scene, float3(0.85));
-
-    // reduce vignette darkness drastically
-    float vign = smoothstep(1.45, 0.55, length(p));
-    scene *= (0.85 + 0.15 * vign);
-
-    // tiny grain
-    float grain = (hash21(fragCoord.xy*0.5)-0.5)*0.02;
-    scene += grain;
-
-    return half4(clamp(scene,0.0,1.0), 1.0);
-}`
-  },
-  {
     title: 'Starfield',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -1500,6 +1349,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Fractal Tunnel',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -1890,6 +1740,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Light Speed',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -2485,6 +2336,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Glass Cubes',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
@@ -2883,6 +2735,7 @@ half4 main(float2 fragCoord) {
   },
   {
     title: 'Night Drive',
+    tag: 'Advanced',
     code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
