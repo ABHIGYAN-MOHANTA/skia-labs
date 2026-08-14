@@ -198,8 +198,8 @@ export default function CommunityPage() {
 
         try {
             const q = isLoadMore && lastDoc
-                ? query(collection(db, 'shaders'), orderBy('likes', 'desc'), startAfter(lastDoc), limit(12))
-                : query(collection(db, 'shaders'), orderBy('likes', 'desc'), limit(12));
+                ? query(collection(db, 'shaders'), orderBy('likes', 'desc'), startAfter(lastDoc), limit(6))
+                : query(collection(db, 'shaders'), orderBy('likes', 'desc'), limit(6));
 
             const querySnapshot = await getDocs(q);
             
@@ -231,7 +231,7 @@ export default function CommunityPage() {
             
             setLikedIds(userLikes);
             
-            if (querySnapshot.docs.length < 12) {
+            if (querySnapshot.docs.length < 6) {
                 setHasMore(false);
             }
         } catch (err) {
