@@ -108,8 +108,7 @@ half4 main(float2 fragCoord) {
     return half4(col, 1.0);
 }`;
 
-function ShaderRenderer({ code }: { code: string }) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
     const [error, setError] = useState<string>('');
     const [canvasKit, setCanvasKit] = useState<import('canvaskit-wasm').CanvasKit | null>(null);
     const [debouncedCode, setDebouncedCode] = useState(code);
@@ -133,7 +132,7 @@ function ShaderRenderer({ code }: { code: string }) {
         
         const canvas = canvasRef.current;
         const setErrorAsync = (message: string) => setTimeout(() => setError(message), 0);
-        const surface = canvasKit.MakeCanvasSurface(canvas);
+        const surface = canvasKit.MakeWebGLCanvasSurface(canvas, canvasKit.ColorSpace.SRGB, { preserveDrawingBuffer: 1 });
         if (!surface) {
             setErrorAsync('Failed to create surface');
             return;
@@ -241,6 +240,7 @@ export default function EditorPage() {
     const defaultEditorPercent = 0.5; // 50% as user default
     const initialEditorWidth = 480; // exact SSR and initial render width
     const containerRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [code, setCode] = useState(() => defaultShaderCode);
     const [editorWidth, setEditorWidth] = useState<number>(initialEditorWidth);
     const [dragging, setDragging] = useState(false);
@@ -466,6 +466,17 @@ export default function EditorPage() {
                 });
             }
 
+            // Capture and save thumbnail
+            if (canvasRef.current) {
+                try {
+                    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
+                    const thumbRef = doc(db, 'shader_thumbnails', id);
+                    await setDoc(thumbRef, { base64: dataUrl });
+                } catch (err) {
+                    console.error('Failed to capture thumbnail', err);
+                }
+            }
+
             const url = `${baseUrl}/editor?id=${encodeURIComponent(id)}`;
 
             if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -530,6 +541,17 @@ export default function EditorPage() {
                     ...shaderData,
                     likes: 0
                 });
+            }
+
+            // Capture and save thumbnail
+            if (canvasRef.current) {
+                try {
+                    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
+                    const thumbRef = doc(db, 'shader_thumbnails', id);
+                    await setDoc(thumbRef, { base64: dataUrl });
+                } catch (err) {
+                    console.error('Failed to capture thumbnail', err);
+                }
             }
 
             setCommunityShareSuccess(true);
@@ -698,7 +720,7 @@ export default function EditorPage() {
                 <div className={`flex-1 bg-zinc-950 h-full min-w-[240px]${dragging ? ' pointer-events-none' : ''}`}>
                     <div className="flex flex-col h-full">
                         <div className="flex-1">
-                            <ShaderRenderer code={code} />
+                            <ShaderRenderer code={code} canvasRef={canvasRef} />
                         </div>
                         <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-col gap-1">
