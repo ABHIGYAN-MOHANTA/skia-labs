@@ -41,7 +41,7 @@ function ShaderPreview({ code }: { code: string }) {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        setIsMobile(typeof window !== 'undefined' && window.matchMedia("(hover: none)").matches);
+        setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768 && window.matchMedia("(hover: none)").matches);
     }, []);
 
     const isPlaying = isHovered || (isMobile && isCentered);
