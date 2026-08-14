@@ -49,7 +49,7 @@ export function Navbar() {
             <Link href="/" className="text-zinc-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Home
             </Link>
-            <Link href="/#gallery" className="text-zinc-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            <Link href="/examples" className="text-zinc-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Examples
             </Link>
             <Link href="/community" className="text-zinc-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
@@ -137,7 +137,7 @@ export function Navbar() {
               Home
             </Link>
             <Link
-              href="/#gallery"
+              href="/examples"
               className="text-zinc-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
               onClick={() => setIsMobileMenuOpen(false)}
             >

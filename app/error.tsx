@@ -12,6 +12,11 @@ export default function Error({
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Skia Labs Application Error:', error);
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: error.message, stack: error.stack })
+    }).catch(console.error);
   }, [error]);
 
   return (
