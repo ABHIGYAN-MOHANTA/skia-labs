@@ -45,10 +45,11 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 * Fully responsive and touch-friendly
 * Snap-safe (min widths enforced)
 
-### 🔗 Easy Sharing
+### 🔗 Easy Sharing & SEO
 
 * Save your work to the cloud and generate an instant share link
 * Copy shader code easily
+* **Dynamic OpenGraph Thumbnails**: Automatically generated thumbnails for rich previews when sharing your links on Twitter, Discord, and iMessage.
 
 ### 💻 Powered by Modern Tech
 
@@ -56,6 +57,7 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 * **CanvasKit (Skia)**
 * **Monaco Editor**
 * **Firebase (Auth & Firestore)**
+* **PostHog (Analytics)**
 * **TypeScript**
 * **Tailwind CSS**
 
@@ -67,6 +69,7 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 | Shader Rendering | CanvasKit / Skia WASM                         |
 | Code Editing     | Monaco Editor w/ custom SKSL language         |
 | Backend & DB     | Firebase Authentication and Cloud Firestore   |
+| Analytics        | PostHog                                       |
 | Optimization     | IntersectionObserver WebGL Lazy Loading       |
 
 ## 📦 **Installation & Setup**
