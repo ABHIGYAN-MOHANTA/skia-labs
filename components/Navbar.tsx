@@ -58,12 +58,12 @@ export function Navbar() {
           </div>
 
           {/* Right: Actions (desktop) */}
-          <div className="hidden md:flex flex-shrink-0 items-center space-x-4">
+          <div className="hidden md:flex flex-shrink-0 items-center gap-4">
             <Link href="/editor" className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-full hover:bg-purple-700 transition-colors shadow-lg shadow-purple-500/20">
               Launch Editor
             </Link>
 
-            <div className="h-6 w-px bg-white/10 mx-2"></div>
+            <div className="h-6 w-px bg-white/10"></div>
 
             {user ? (
               <div className="flex items-center gap-4">
@@ -87,7 +87,7 @@ export function Navbar() {
               </button>
             )}
 
-            <div className="h-6 w-px bg-white/10 mx-2"></div>
+            <div className="h-6 w-px bg-white/10"></div>
 
             <a
               href="https://github.com/ABHIGYAN-MOHANTA/skia-labs"
