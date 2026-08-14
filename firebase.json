@@ -3,7 +3,8 @@
     "authorizedDomains": [
       "localhost",
       "127.0.0.1",
-      "skialabs.hostagedown.com",
+      "skialabs.dev",
+      "www.skialabs.dev",
       "skia-labs.vercel.app"
     ],
     "providers": {

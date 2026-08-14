@@ -14,7 +14,7 @@ export async function generateMetadata(
   const id = resolvedSearchParams?.id;
 
   if (id && typeof id === "string") {
-    const baseUrl = "https://skialabs.hostagedown.com";
+    const baseUrl = "https://skialabs.dev";
     const imageUrl = `${baseUrl}/api/thumbnail/${id}`;
 
     return {

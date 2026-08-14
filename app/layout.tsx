@@ -19,11 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Skia Labs",
   description: "Write, test, and explore SKSL shaders in real-time. A powerful web-based playground for creative coding with Skia's shader language.",
-  metadataBase: new URL("https://skialabs.hostagedown.com"),
+  metadataBase: new URL("https://skialabs.dev"),
   openGraph: {
     title: "Skia Labs | SKSL Shader Playground",
     description: "Write, test, and explore SKSL shaders in real-time.",
-    url: "https://skialabs.hostagedown.com",
+    url: "https://skialabs.dev",
     siteName: "Skia Labs",
     images: [
       {

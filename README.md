@@ -1,5 +1,7 @@
 # 🌌 **Skia Labs SKSL Shader Playground**
 
+**Live site:** [skialabs.dev](https://skialabs.dev)
+
 A beautiful, fast, web-based playground for **Skia's Shader Language (SKSL)**.
 Write, preview, and share shaders, all rendered with **CanvasKit (Skia WebAssembly)** and powered by **Next.js**, **Monaco Editor**, and **Firebase**.
 
