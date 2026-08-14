@@ -263,8 +263,7 @@ export default function Home() {
             </h1>
 
             <p className="max-w-2xl mx-auto text-xl text-zinc-200/95">
-              Write, test, and explore SKSL shaders in real-time.
-              A powerful web-based playground for creative coding with Skia&apos;s shader language.
+              Ditch bloated Lottie files. Build high-performance, interactive SKSL shaders for your React Native and Flutter apps in real-time. The ultimate creative coding playground for mobile developers.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[280px] sm:max-w-none mx-auto">
@@ -285,6 +284,16 @@ export default function Home() {
                 className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-zinc-100 font-semibold rounded-full hover:bg-white/10 transition-all duration-200 z-30"
               >
                 View Examples
+              </a>
+              <a
+                href="/sksl-shader-writer.zip"
+                download
+                className="w-full sm:w-auto text-center px-8 py-4 border-2 border-purple-500/50 bg-purple-500/10 backdrop-blur-sm text-zinc-100 font-semibold rounded-full hover:bg-purple-500/20 hover:scale-105 transition-all duration-200 z-30 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Agent Skill
               </a>
             </div>
           </div>

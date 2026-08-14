@@ -145,9 +145,12 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
         const startTime = Date.now();
 
         try {
-            effect = canvasKit.RuntimeEffect.Make(debouncedCode);
+            let compileError = '';
+            effect = canvasKit.RuntimeEffect.Make(debouncedCode, (err) => {
+                compileError = err;
+            });
             if (!effect) {
-                setErrorAsync('Failed to compile shader - invalid SKSL syntax');
+                setErrorAsync(compileError || 'Failed to compile shader - invalid SKSL syntax');
                 return;
             }
             setErrorAsync('');
@@ -222,7 +225,7 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                 className="max-w-full max-h-full"
             />
             {error && (
-                <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg">
+                <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg whitespace-pre-wrap max-h-96 overflow-y-auto">
                     {error}
                 </div>
             )}
