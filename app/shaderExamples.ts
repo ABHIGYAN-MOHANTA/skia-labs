@@ -1,41 +1,78 @@
 export type ShaderExample = {
-  title: string;
-  code: string;
-  tag?: 'Simple' | 'Intermediate' | 'Advanced' | 'Interactive';
+    title: string;
+    code: string;
+    tag?: 'Simple' | 'Intermediate' | 'Advanced' | 'Interactive';
 };
 
 export const shaderExamples: ShaderExample[] = [
-  {
-    title: 'Interactive Mouse',
-    tag: 'Interactive',
-    code: `// kind=shader
+    {
+        title: 'Interactive Mouse',
+        tag: 'Interactive',
+        code: `// kind=shader
+
 uniform float iTime;
 uniform float2 iResolution;
 uniform float4 iMouse;
 
 half4 main(float2 fragCoord) {
-    float2 uv = fragCoord / iResolution.xy;
-    float2 mouseUv = iMouse.xy / iResolution.xy;
-    
-    // Calculate distance from current pixel to mouse
-    float dist = distance(uv, mouseUv);
-    
-    // Draw a glowing circle around the mouse
-    float circle = 0.08 / dist;
-    
-    // Background gradient so it's not totally black
-    float3 bg = float3(uv.x * 0.15, uv.y * 0.15, 0.2);
-    
-    // Make it red if clicking, blue if just hovering
-    float3 mouseGlow = iMouse.z > 0.0 ? float3(circle, 0.0, 0.0) : float3(0.0, 0.2, circle);
-    
-    return half4(bg + mouseGlow, 1.0);
+
+    // Normalize coordinates
+    float2 uv =
+        fragCoord / iResolution.xy;
+
+    float2 mouseUv =
+        iMouse.xy / iResolution.xy;
+
+
+    // Correct for non-square canvas
+    float aspect =
+        iResolution.x / iResolution.y;
+
+    uv.x *= aspect;
+    mouseUv.x *= aspect;
+
+
+    // Distance from pixel to mouse
+    float dist =
+        distance(
+            uv,
+            mouseUv
+        );
+
+
+    // Glowing circle
+    float circle =
+        0.08 / max(dist, 0.001);
+
+
+    // Background
+    float3 bg =
+        float3(
+            uv.x * 0.15,
+            uv.y * 0.15,
+            0.2
+        );
+
+
+    // Mouse color
+    float3 mouseGlow =
+        iMouse.z > 0.0
+        ?
+        float3(circle, 0.0, 0.0)
+        :
+        float3(0.0, 0.2, circle);
+
+
+    return half4(
+        bg + mouseGlow,
+        1.0
+    );
 }`
-  },
-  {
-    title: 'Color Waves',
-    tag: 'Simple',
-    code: `// kind=shader
+    },
+    {
+        title: 'Color Waves',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -45,11 +82,11 @@ half4 main(float2 fragCoord) {
     col *= 0.6;
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Pattern Gradient',
-    tag: 'Simple',
-    code: `// kind=shader
+    },
+    {
+        title: 'Pattern Gradient',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -62,11 +99,11 @@ half4 main(float2 fragCoord) {
     col *= 0.5;
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Psychedelic Tunnel',
-    tag: 'Simple',
-    code: `// kind=shader
+    },
+    {
+        title: 'Psychedelic Tunnel',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -89,11 +126,11 @@ half4 main(float2 fragCoord) {
 
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Cloudy Sky',
-    tag: 'Intermediate',
-    code: `// kind=shader
+    },
+    {
+        title: 'Cloudy Sky',
+        tag: 'Intermediate',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -162,11 +199,11 @@ half4 main(float2 fragCoord) {
     return half4(col, 1.0);
 }
 `
-  },
-  {
-    title: 'Hyper Tunnel',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Hyper Tunnel',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1039,11 +1076,11 @@ half4 main(
     );
 }
 `
-  },
-  {
-    title: 'Starfield',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Starfield',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1373,11 +1410,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Fractal Tunnel',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Fractal Tunnel',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1764,11 +1801,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Light Speed',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Light Speed',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -2360,11 +2397,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Glass Cubes',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Glass Cubes',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -2759,11 +2796,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Night Drive',
-    tag: 'Advanced',
-    code: `// kind=shader
+    },
+    {
+        title: 'Night Drive',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -4343,5 +4380,5 @@ half4 main(
     );
 }
 `
-  }
+    }
 ];
