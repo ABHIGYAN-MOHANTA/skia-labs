@@ -101,6 +101,7 @@ function ShaderPreview({ code }: { code: string }) {
     let paint: any = null;
     let animationId: number;
     let isActive = true;
+    let frameCount = 0;
     const startTime = Date.now();
 
     try {
@@ -121,7 +122,10 @@ function ShaderPreview({ code }: { code: string }) {
 
         try {
           const skcanvas = surface.getCanvas();
-          const currentTime = (Date.now() - startTime) / 1000;
+          const now = Date.now();
+          const currentTime = (now - startTime) / 1000;
+          const timeDelta = lastDrawTime === 0 ? 0 : (now - lastDrawTime) / 1000;
+          const frameRate = timeDelta > 0 ? 1.0 / timeDelta : 0.0;
           
           const numUniforms = effect.getUniformCount();
           const uniformData = new Float32Array(effect.getUniformFloatCount());
@@ -142,6 +146,18 @@ function ShaderPreview({ code }: { code: string }) {
                   uniformData[slot + 1] = (Math.cos(currentTime * 2) * 0.4 + 0.5) * canvas.height;
                   uniformData[slot + 2] = 1; // Fake click down
                   uniformData[slot + 3] = 1; // Fake click down
+              } else if (name === 'iTimeDelta') {
+                  uniformData[slot] = timeDelta;
+              } else if (name === 'iFrame') {
+                  uniformData[slot] = frameCount; 
+              } else if (name === 'iFrameRate') {
+                  uniformData[slot] = frameRate;
+              } else if (name === 'iDate') {
+                  const d = new Date();
+                  uniformData[slot] = d.getFullYear();
+                  uniformData[slot + 1] = d.getMonth() + 1;
+                  uniformData[slot + 2] = d.getDate();
+                  uniformData[slot + 3] = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
               }
           }
           
@@ -152,6 +168,8 @@ function ShaderPreview({ code }: { code: string }) {
           skcanvas.clear(canvasKit.WHITE);
           skcanvas.drawPaint(paint);
           surface.flush();
+          
+          frameCount++;
         } catch {
           isActive = false;
         }

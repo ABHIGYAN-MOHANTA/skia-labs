@@ -184,6 +184,8 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
         let shader: import('canvaskit-wasm').Shader | null = null;
         let animationId: number | null = null;
         let isActive = true;
+        let frameCount = 0;
+        let lastDrawTime = 0;
         const startTime = Date.now();
 
         try {
@@ -203,7 +205,10 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                 try {
                     const skcanvas = surface.getCanvas();
                     const paint = new canvasKit.Paint();
-                    const currentTime = (Date.now() - startTime) / 1000;
+                    const now = Date.now();
+                    const currentTime = (now - startTime) / 1000;
+                    const timeDelta = lastDrawTime === 0 ? 0 : (now - lastDrawTime) / 1000;
+                    const frameRate = timeDelta > 0 ? 1.0 / timeDelta : 0.0;
                     
                     const numUniforms = effect.getUniformCount();
                     const uniformData = new Float32Array(effect.getUniformFloatCount());
@@ -223,6 +228,20 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                             uniformData[slot + 1] = mouseState.current.y;
                             uniformData[slot + 2] = mouseState.current.z;
                             uniformData[slot + 3] = mouseState.current.w;
+                        } else if (name === 'iTimeDelta') {
+                            uniformData[slot] = timeDelta;
+                        } else if (name === 'iFrame') {
+                            // Canvaskit requires floats, so we pass it as a float even if declared as int in GLSL. 
+                            // Note: In strict SKSL, iFrame might be int, but makeShader maps it.
+                            uniformData[slot] = frameCount; 
+                        } else if (name === 'iFrameRate') {
+                            uniformData[slot] = frameRate;
+                        } else if (name === 'iDate') {
+                            const d = new Date();
+                            uniformData[slot] = d.getFullYear();
+                            uniformData[slot + 1] = d.getMonth() + 1;
+                            uniformData[slot + 2] = d.getDate();
+                            uniformData[slot + 3] = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
                         }
                     }
 
@@ -240,6 +259,9 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                     surface.flush();
 
                     paint.delete();
+                    
+                    lastDrawTime = now;
+                    frameCount++;
 
                     if (isActive) {
                         animationId = requestAnimationFrame(draw);

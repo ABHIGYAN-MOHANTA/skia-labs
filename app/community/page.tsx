@@ -113,6 +113,8 @@ function ShaderPreview({ code }: { code: string }) {
 
             paint = new canvasKit.Paint();
 
+            let isActive = true;
+            let frameCount = 0;
             let lastDrawTime = 0;
             const frameInterval = 1000 / 30; // 30 FPS cap
 
@@ -125,16 +127,53 @@ function ShaderPreview({ code }: { code: string }) {
 
                 try {
                     const skcanvas = surface.getCanvas();
-                    const currentTime = (Date.now() - startTime) / 1000;
-                    const uniforms = new Float32Array([currentTime, canvas.width, canvas.height]);
+                    const now = Date.now();
+                    const currentTime = (now - startTime) / 1000;
+                    const timeDelta = lastDrawTime === 0 ? 0 : (now - lastDrawTime) / 1000;
+                    const frameRate = timeDelta > 0 ? 1.0 / timeDelta : 0.0;
+                    
+                    const numUniforms = effect.getUniformCount();
+                    const uniformData = new Float32Array(effect.getUniformFloatCount());
+
+                    for (let i = 0; i < numUniforms; i++) {
+                        const name = effect.getUniformName(i);
+                        const uniform = effect.getUniform(i);
+                        const slot = uniform.slot;
+                        
+                        if (name === 'iTime') {
+                            uniformData[slot] = currentTime;
+                        } else if (name === 'iResolution') {
+                            uniformData[slot] = canvas.width;
+                            uniformData[slot + 1] = canvas.height;
+                        } else if (name === 'iMouse') {
+                            uniformData[slot] = (Math.sin(currentTime * 2) * 0.4 + 0.5) * canvas.width;
+                            uniformData[slot + 1] = (Math.cos(currentTime * 2) * 0.4 + 0.5) * canvas.height;
+                            uniformData[slot + 2] = 1;
+                            uniformData[slot + 3] = 1;
+                        } else if (name === 'iTimeDelta') {
+                            uniformData[slot] = timeDelta;
+                        } else if (name === 'iFrame') {
+                            uniformData[slot] = frameCount; 
+                        } else if (name === 'iFrameRate') {
+                            uniformData[slot] = frameRate;
+                        } else if (name === 'iDate') {
+                            const d = new Date();
+                            uniformData[slot] = d.getFullYear();
+                            uniformData[slot + 1] = d.getMonth() + 1;
+                            uniformData[slot + 2] = d.getDate();
+                            uniformData[slot + 3] = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+                        }
+                    }
                     
                     if (shader) shader.delete();
-                    shader = effect.makeShader(uniforms);
+                    shader = effect.makeShader(uniformData);
                     paint.setShader(shader);
 
                     skcanvas.clear(canvasKit.WHITE);
                     skcanvas.drawPaint(paint);
                     surface.flush();
+                    
+                    frameCount++;
                 } catch {
                     isActive = false;
                 }
