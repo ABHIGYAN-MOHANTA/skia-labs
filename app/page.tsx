@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { initKeyboard, keyboardTexture } from '@/lib/keyboard';
 import posthog from 'posthog-js';
 import type { CanvasKit, RuntimeEffect, Shader } from 'canvaskit-wasm';
 import { shaderExamples } from './shaderExamples';
@@ -24,10 +25,11 @@ function HeroShaderBackground({ code }: { code: string }) {
   }, []);
 
   useEffect(() => {
-    if (isIntersecting) {
+    initKeyboard();
+    if (isIntersecting && !canvasKit) {
       loadCanvasKit().then(setCanvasKit).catch(console.error);
     }
-  }, [isIntersecting]);
+  }, [isIntersecting, canvasKit]);
 
   useEffect(() => {
     const handleResize = () => setCanvasVersion((v) => v + 1);
@@ -122,7 +124,33 @@ function HeroShaderBackground({ code }: { code: string }) {
             shader = null;
           }
 
-          shader = effect.makeShader(uniformData);
+          const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(code);
+          if (hasKeyboard) {
+              const kbImg = canvasKit.MakeImage({
+                  width: 256,
+                  height: 3,
+                  alphaType: canvasKit.AlphaType.Opaque,
+                  colorType: canvasKit.ColorType.RGBA_8888,
+                  colorSpace: canvasKit.ColorSpace.SRGB
+              }, keyboardTexture, 256 * 4);
+              
+              if (kbImg) {
+                  const kbShader = kbImg.makeShaderOptions(
+                      canvasKit.TileMode.Clamp,
+                      canvasKit.TileMode.Clamp,
+                      canvasKit.FilterMode.Nearest,
+                      canvasKit.MipmapMode.None,
+                      undefined
+                  );
+                  shader = effect.makeShaderWithChildren(uniformData, [kbShader]);
+                  kbShader.delete();
+                  kbImg.delete();
+              } else {
+                  shader = effect.makeShader(uniformData);
+              }
+          } else {
+              shader = effect.makeShader(uniformData);
+          }
           paint.setShader(shader);
 
           skcanvas.clear(canvasKit.TRANSPARENT);

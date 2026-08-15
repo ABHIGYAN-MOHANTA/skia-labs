@@ -110,6 +110,8 @@ half4 main(float2 fragCoord) {
     return half4(col, 1.0);
 }`;
 
+import { initKeyboard, keyboardTexture } from '@/lib/keyboard';
+
 function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
     const [error, setError] = useState<string>('');
     const [canvasKit, setCanvasKit] = useState<import('canvaskit-wasm').CanvasKit | null>(null);
@@ -156,6 +158,7 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
     }, [canvasRef]);
 
     useEffect(() => {
+        initKeyboard();
         loadCanvasKit()
             .then(setCanvasKit)
             .catch(console.error);
@@ -248,10 +251,37 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                     // Clean up previous shader before creating new one
                     if (shader) {
                         shader.delete();
-                        shader = null;
                     }
 
-                    shader = effect.makeShader(uniformData);
+                    const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(debouncedCode);
+
+                    if (hasKeyboard) {
+                        const kbImg = canvasKit.MakeImage({
+                            width: 256,
+                            height: 3,
+                            alphaType: canvasKit.AlphaType.Opaque,
+                            colorType: canvasKit.ColorType.RGBA_8888,
+                            colorSpace: canvasKit.ColorSpace.SRGB
+                        }, keyboardTexture, 256 * 4);
+                        
+                        if (kbImg) {
+                            const kbShader = kbImg.makeShaderOptions(
+                                canvasKit.TileMode.Clamp,
+                                canvasKit.TileMode.Clamp,
+                                canvasKit.FilterMode.Nearest,
+                                canvasKit.MipmapMode.None,
+                                undefined
+                            );
+                            shader = effect.makeShaderWithChildren(uniformData, [kbShader]);
+                            kbShader.delete();
+                            kbImg.delete();
+                        } else {
+                            shader = effect.makeShader(uniformData);
+                        }
+                    } else {
+                        shader = effect.makeShader(uniformData);
+                    }
+                    
                     paint.setShader(shader);
 
                     skcanvas.clear(canvasKit.WHITE);
@@ -305,7 +335,7 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                 className="max-w-full max-h-full touch-none"
             />
             {error && (
-                <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg whitespace-pre-wrap max-h-96 overflow-y-auto">
+                <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg whitespace-pre-wrap max-h-96 overflow-y-auto select-text">
                     {error}
                 </div>
             )}

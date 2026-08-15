@@ -4380,5 +4380,137 @@ half4 main(
     );
 }
 `
+    },
+    {
+        title: 'Keyboard Test',
+        tag: 'Interactive',
+        code: `// kind=shader
+
+/* 
+ * NOTE ON MOBILE (REACT NATIVE, FLUTTER, NATIVE) USAGE:
+ * This specific shader uses a raw 256x3 byte array texture (iKeyboard)
+ * updated continuously by global DOM keyboard events (window.addEventListener). 
+ * 
+ * It will NOT work "out-of-the-box" in mobile apps because:
+ * 1. Mobile devices lack a global physical keyboard listener by default.
+ * 2. Uploading a dynamic CPU byte array to a GPU Image texture 
+ *    every single frame is highly inefficient on mobile UI frameworks.
+ *
+ * For mobile interactions, use touch gesture handlers (like GestureDetector)
+ * to track touches and pass them to your shader as standard uniform floats!
+ */
+
+uniform float iTime;
+uniform float2 iResolution;
+uniform shader iKeyboard;
+
+// Helper to check if a specific key is currently being held down
+float keyHeld(float keycode) {
+    // Row 0 is the "held down" state
+    return iKeyboard.eval(float2(keycode + 0.5, 0.5)).r;
+}
+
+// Math to draw a rounded rectangle (a keyboard key)
+float sdRoundRect(float2 p, float2 b, float r) {
+    float2 d = abs(p) - b + float2(r);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
+}
+
+// Helper to get the correct keycode without using arrays
+float getKeyCode(int row, int col) {
+    if (row == 0) { // Top Row (Q to P)
+        if (col == 0) return 81.0;
+        if (col == 1) return 87.0;
+        if (col == 2) return 69.0;
+        if (col == 3) return 82.0;
+        if (col == 4) return 84.0;
+        if (col == 5) return 89.0;
+        if (col == 6) return 85.0;
+        if (col == 7) return 73.0;
+        if (col == 8) return 79.0;
+        if (col == 9) return 80.0;
+    } else if (row == 1) { // Middle Row (A to L)
+        if (col == 0) return 65.0;
+        if (col == 1) return 83.0;
+        if (col == 2) return 68.0;
+        if (col == 3) return 70.0;
+        if (col == 4) return 71.0;
+        if (col == 5) return 72.0;
+        if (col == 6) return 74.0;
+        if (col == 7) return 75.0;
+        if (col == 8) return 76.0;
+    } else if (row == 2) { // Bottom Row (Z to M)
+        if (col == 0) return 90.0;
+        if (col == 1) return 88.0;
+        if (col == 2) return 67.0;
+        if (col == 3) return 86.0;
+        if (col == 4) return 66.0;
+        if (col == 5) return 78.0;
+        if (col == 6) return 77.0;
+    }
+    return -1.0;
+}
+
+half4 main(float2 fragCoord) {
+    // Normalize coordinates and center them
+    float2 uv = fragCoord / iResolution.xy;
+    float2 p = uv - float2(0.5);
+    p.x *= iResolution.x / iResolution.y; // Correct aspect ratio
+    
+    float3 col = float3(0.1, 0.1, 0.15); // Dark background
+    
+    float2 boxSize = float2(0.035);
+    float spacing = 0.09;
+    float cornerRadius = 0.008;
+    
+    // 1. Draw Top Row (10 keys)
+    for (int i = 0; i < 10; ++i) {
+        float2 pos = float2(-4.5 * spacing + float(i) * spacing, -0.12);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(0, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state); 
+        }
+    }
+    
+    // 2. Draw Middle Row (9 keys)
+    for (int i = 0; i < 9; ++i) {
+        float2 pos = float2(-4.0 * spacing + float(i) * spacing, 0.0);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(1, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+    
+    // 3. Draw Bottom Row (7 keys)
+    for (int i = 0; i < 7; ++i) {
+        float2 pos = float2(-3.0 * spacing + float(i) * spacing, 0.12);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(2, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+
+    // 4. Draw Arrow Keys (Inverted T shape - Shifted Right to avoid M)
+    for (int i = 0; i < 4; ++i) {
+        float keycode = 0.0;
+        float2 pos = float2(0.0);
+        
+        if (i == 0)      { keycode = 38.0; pos = float2(5.0 * spacing, 0.12); } // Up
+        else if (i == 1) { keycode = 37.0; pos = float2(4.0 * spacing, 0.24); } // Left
+        else if (i == 2) { keycode = 40.0; pos = float2(5.0 * spacing, 0.24); } // Down
+        else if (i == 3) { keycode = 39.0; pos = float2(6.0 * spacing, 0.24); } // Right
+        
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(keycode);
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+    
+    return half4(col, 1.0);
+}`
     }
 ];

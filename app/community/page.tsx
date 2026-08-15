@@ -11,6 +11,7 @@ import { SignInModal } from '@/components/SignInModal';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { shaderExamples } from '../shaderExamples';
 import posthog from 'posthog-js';
+import { initKeyboard, keyboardTexture } from '@/lib/keyboard';
 
 interface ShaderDoc {
     id: string;
@@ -42,6 +43,7 @@ function ShaderPreview({ code }: { code: string }) {
     const isPlaying = isHovered || isCentered;
 
     useEffect(() => {
+        initKeyboard();
         if (isIntersecting && !canvasKit) {
             loadCanvasKit().then(setCanvasKit).catch(console.error);
         }
@@ -68,7 +70,33 @@ function ShaderPreview({ code }: { code: string }) {
                 const skcanvas = surface.getCanvas();
                 paint = new canvasKit.Paint();
                 const uniforms = new Float32Array([1.5, tempCanvas.width, tempCanvas.height]);
-                shader = effect.makeShader(uniforms);
+                const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(code);
+                if (hasKeyboard) {
+                    const kbImg = canvasKit.MakeImage({
+                        width: 256,
+                        height: 3,
+                        alphaType: canvasKit.AlphaType.Opaque,
+                        colorType: canvasKit.ColorType.RGBA_8888,
+                        colorSpace: canvasKit.ColorSpace.SRGB
+                    }, keyboardTexture, 256 * 4);
+                    
+                    if (kbImg) {
+                        const kbShader = kbImg.makeShaderOptions(
+                            canvasKit.TileMode.Clamp,
+                            canvasKit.TileMode.Clamp,
+                            canvasKit.FilterMode.Nearest,
+                            canvasKit.MipmapMode.None,
+                            undefined
+                        );
+                        shader = effect.makeShaderWithChildren(uniforms, [kbShader]);
+                        kbShader.delete();
+                        kbImg.delete();
+                    } else {
+                        shader = effect.makeShader(uniforms);
+                    }
+                } else {
+                    shader = effect.makeShader(uniforms);
+                }
                 paint.setShader(shader);
                 
                 skcanvas.clear(canvasKit.WHITE);
@@ -166,7 +194,33 @@ function ShaderPreview({ code }: { code: string }) {
                     }
                     
                     if (shader) shader.delete();
-                    shader = effect.makeShader(uniformData);
+                    const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(code);
+                    if (hasKeyboard) {
+                        const kbImg = canvasKit.MakeImage({
+                            width: 256,
+                            height: 3,
+                            alphaType: canvasKit.AlphaType.Opaque,
+                            colorType: canvasKit.ColorType.RGBA_8888,
+                            colorSpace: canvasKit.ColorSpace.SRGB
+                        }, keyboardTexture, 256 * 4);
+                        
+                        if (kbImg) {
+                            const kbShader = kbImg.makeShaderOptions(
+                                canvasKit.TileMode.Clamp,
+                                canvasKit.TileMode.Clamp,
+                                canvasKit.FilterMode.Nearest,
+                                canvasKit.MipmapMode.None,
+                                undefined
+                            );
+                            shader = effect.makeShaderWithChildren(uniformData, [kbShader]);
+                            kbShader.delete();
+                            kbImg.delete();
+                        } else {
+                            shader = effect.makeShader(uniformData);
+                        }
+                    } else {
+                        shader = effect.makeShader(uniformData);
+                    }
                     paint.setShader(shader);
 
                     skcanvas.clear(canvasKit.WHITE);

@@ -7,6 +7,7 @@ import { shaderExamples } from '../shaderExamples';
 import { loadCanvasKit } from '@/lib/canvaskit';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Navbar } from '@/components/Navbar';
+import { initKeyboard, keyboardTexture } from '@/lib/keyboard';
 
 function ShaderPreview({ code }: { code: string }) {
   const [containerRef, isIntersecting] = useIntersectionObserver<HTMLDivElement>();
@@ -19,6 +20,7 @@ function ShaderPreview({ code }: { code: string }) {
   const isPlaying = isHovered || isCentered;
 
   useEffect(() => {
+    initKeyboard();
     if (isIntersecting && !canvasKit) {
       loadCanvasKit().then(setCanvasKit).catch(console.error);
     }
@@ -64,7 +66,34 @@ function ShaderPreview({ code }: { code: string }) {
                 uniformData[slot + 3] = 1;
             }
         }
-        shader = effect.makeShader(uniformData);
+        const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(code);
+        if (hasKeyboard) {
+            const kbImg = canvasKit.MakeImage({
+                width: 256,
+                height: 3,
+                alphaType: canvasKit.AlphaType.Opaque,
+                colorType: canvasKit.ColorType.RGBA_8888,
+                colorSpace: canvasKit.ColorSpace.SRGB
+            }, keyboardTexture, 256 * 4);
+            
+            if (kbImg) {
+                const kbShader = kbImg.makeShaderOptions(
+                    canvasKit.TileMode.Clamp,
+                    canvasKit.TileMode.Clamp,
+                    canvasKit.FilterMode.Nearest,
+                    canvasKit.MipmapMode.None,
+                    undefined
+                );
+                shader = effect.makeShaderWithChildren(uniformData, [kbShader]);
+                kbShader.delete();
+                kbImg.delete();
+            } else {
+                shader = effect.makeShader(uniformData);
+            }
+        } else {
+            shader = effect.makeShader(uniformData);
+        }
+        
         paint.setShader(shader);
         
         skcanvas.clear(canvasKit.WHITE);
@@ -141,9 +170,9 @@ function ShaderPreview({ code }: { code: string }) {
                   uniformData[slot] = canvas.width;
                   uniformData[slot + 1] = canvas.height;
               } else if (name === 'iMouse') {
-                  // Fake an animated mouse for the thumbnail hover preview
+                  // Fake an animated mouse for the thumbnail hover preview (Figure-eight pattern)
                   uniformData[slot] = (Math.sin(currentTime * 2) * 0.4 + 0.5) * canvas.width;
-                  uniformData[slot + 1] = (Math.cos(currentTime * 2) * 0.4 + 0.5) * canvas.height;
+                  uniformData[slot + 1] = (Math.sin(currentTime * 4) * 0.25 + 0.5) * canvas.height;
                   uniformData[slot + 2] = 1; // Fake click down
                   uniformData[slot + 3] = 1; // Fake click down
               } else if (name === 'iTimeDelta') {
@@ -162,7 +191,34 @@ function ShaderPreview({ code }: { code: string }) {
           }
           
           if (shader) shader.delete();
-          shader = effect.makeShader(uniformData);
+
+          const hasKeyboard = /uniform\s+shader\s+iKeyboard;/.test(code);
+          if (hasKeyboard) {
+              const kbImg = canvasKit.MakeImage({
+                  width: 256,
+                  height: 3,
+                  alphaType: canvasKit.AlphaType.Opaque,
+                  colorType: canvasKit.ColorType.RGBA_8888,
+                  colorSpace: canvasKit.ColorSpace.SRGB
+              }, keyboardTexture, 256 * 4);
+              
+              if (kbImg) {
+                  const kbShader = kbImg.makeShaderOptions(
+                      canvasKit.TileMode.Clamp,
+                      canvasKit.TileMode.Clamp,
+                      canvasKit.FilterMode.Nearest,
+                      canvasKit.MipmapMode.None,
+                      undefined
+                  );
+                  shader = effect.makeShaderWithChildren(uniformData, [kbShader]);
+                  kbShader.delete();
+                  kbImg.delete();
+              } else {
+                  shader = effect.makeShader(uniformData);
+              }
+          } else {
+              shader = effect.makeShader(uniformData);
+          }
           paint.setShader(shader);
 
           skcanvas.clear(canvasKit.WHITE);
