@@ -59,6 +59,16 @@ export function Navbar() {
 
           {/* Right: Actions (desktop) */}
           <div className="hidden md:flex flex-shrink-0 items-center gap-4">
+            <a 
+              href="https://www.producthunt.com/products/skia-labs?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-skia-labs" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hidden lg:block hover:opacity-90 transition-opacity"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Skia Labs - Ditch bloated Lottie files for 60fps mobile animations | Product Hunt" width="200" height="43" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1223280&theme=dark&t=1786797634719" />
+            </a>
+
             <Link href="/editor" className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-full hover:bg-purple-700 transition-colors shadow-lg shadow-purple-500/20">
               Launch Editor
             </Link>
@@ -169,7 +179,17 @@ export function Navbar() {
               Launch Editor
             </Link>
 
-            <div className="border-t border-white/10 mt-4 pt-4 pb-2">
+            <a 
+              href="https://www.producthunt.com/products/skia-labs?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-skia-labs" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block px-3 py-4 mt-2 border-t border-white/10"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Skia Labs - Ditch bloated Lottie files for 60fps mobile animations | Product Hunt" width="200" height="43" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1223280&theme=dark&t=1786797634719" className="mx-auto" />
+            </a>
+
+            <div className="border-t border-white/10 pt-4 pb-2">
               {user ? (
                 <div className="px-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
