@@ -135,6 +135,8 @@ Skia Labs automatically provides:
 | ------------- | -------- | ----------------------- |
 | `iTime`       | `float`  | Elapsed time in seconds |
 | `iResolution` | `float2` | Canvas width & height   |
+| `iMouse`      | `float4` | Mouse coordinates and click state (x, y, z, w) |
+| `iKeyboard`   | `shader` | 256x3 texture containing live keyboard state (held, pressed, toggled) |
 
 ## 🗜️ **How Shaders Run (Under the Hood)**
 
@@ -164,8 +166,6 @@ A clean render loop ensures:
 - **Channels (iChannel0-3)**: Passing in images, noise textures, and cubemaps. This is used a lot for displacement effects, water ripples, and texturing 3D objects.
 - **Audio Reactive Inputs**: Passing in microphone or Soundcloud data as a texture so shaders can bounce to music.
 - **Multi-Pass Rendering (Buffers)**: "Buffer A", "Buffer B", etc., where the output of one shader feeds into the input of another. This is required for fluid simulations and path tracing.
-- **Keyboard Input**: Passing keyboard state as a texture so you can walk around in 3D scenes.
-
 ## 🤝 **Contributing**
 
 Contributions are welcome!
