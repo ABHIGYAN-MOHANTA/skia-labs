@@ -44,8 +44,27 @@ function ShaderPreview({ code }: { code: string }) {
       if (effect) {
         const skcanvas = surface.getCanvas();
         paint = new canvasKit.Paint();
-        const uniforms = new Float32Array([1.5, tempCanvas.width, tempCanvas.height]);
-        shader = effect.makeShader(uniforms);
+        const numUniforms = effect.getUniformCount();
+        const uniformData = new Float32Array(effect.getUniformFloatCount());
+
+        for (let i = 0; i < numUniforms; i++) {
+            const name = effect.getUniformName(i);
+            const uniform = effect.getUniform(i);
+            const slot = uniform.slot;
+            
+            if (name === 'iTime') {
+                uniformData[slot] = 1.5;
+            } else if (name === 'iResolution') {
+                uniformData[slot] = tempCanvas.width;
+                uniformData[slot + 1] = tempCanvas.height;
+            } else if (name === 'iMouse') {
+                uniformData[slot] = tempCanvas.width / 2;
+                uniformData[slot + 1] = tempCanvas.height / 2;
+                uniformData[slot + 2] = 1;
+                uniformData[slot + 3] = 1;
+            }
+        }
+        shader = effect.makeShader(uniformData);
         paint.setShader(shader);
         
         skcanvas.clear(canvasKit.WHITE);
@@ -103,10 +122,31 @@ function ShaderPreview({ code }: { code: string }) {
         try {
           const skcanvas = surface.getCanvas();
           const currentTime = (Date.now() - startTime) / 1000;
-          const uniforms = new Float32Array([currentTime, canvas.width, canvas.height]);
+          
+          const numUniforms = effect.getUniformCount();
+          const uniformData = new Float32Array(effect.getUniformFloatCount());
+
+          for (let i = 0; i < numUniforms; i++) {
+              const name = effect.getUniformName(i);
+              const uniform = effect.getUniform(i);
+              const slot = uniform.slot;
+              
+              if (name === 'iTime') {
+                  uniformData[slot] = currentTime;
+              } else if (name === 'iResolution') {
+                  uniformData[slot] = canvas.width;
+                  uniformData[slot + 1] = canvas.height;
+              } else if (name === 'iMouse') {
+                  // Fake an animated mouse for the thumbnail hover preview
+                  uniformData[slot] = (Math.sin(currentTime * 2) * 0.4 + 0.5) * canvas.width;
+                  uniformData[slot + 1] = (Math.cos(currentTime * 2) * 0.4 + 0.5) * canvas.height;
+                  uniformData[slot + 2] = 1; // Fake click down
+                  uniformData[slot + 3] = 1; // Fake click down
+              }
+          }
           
           if (shader) shader.delete();
-          shader = effect.makeShader(uniforms);
+          shader = effect.makeShader(uniformData);
           paint.setShader(shader);
 
           skcanvas.clear(canvasKit.WHITE);
@@ -197,6 +237,7 @@ export default function ExamplesPage() {
                     <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
                       example.tag === 'Simple' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
                       example.tag === 'Intermediate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400' :
+                      example.tag === 'Interactive' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400' :
                       'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
                     }`}>
                       {example.tag}

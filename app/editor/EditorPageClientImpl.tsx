@@ -114,6 +114,46 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
     const [error, setError] = useState<string>('');
     const [canvasKit, setCanvasKit] = useState<import('canvaskit-wasm').CanvasKit | null>(null);
     const [debouncedCode, setDebouncedCode] = useState(code);
+    const mouseState = useRef({ x: 0, y: 0, z: 0, w: 0 });
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const handlePointerMove = (e: PointerEvent) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseState.current.x = e.clientX - rect.left;
+            mouseState.current.y = e.clientY - rect.top;
+            if (mouseState.current.z > 0) {
+                mouseState.current.z = mouseState.current.x;
+                mouseState.current.w = mouseState.current.y;
+            }
+        };
+        const handlePointerDown = (e: PointerEvent) => {
+            canvas.setPointerCapture(e.pointerId);
+            const rect = canvas.getBoundingClientRect();
+            mouseState.current.z = e.clientX - rect.left;
+            mouseState.current.w = e.clientY - rect.top;
+            mouseState.current.x = mouseState.current.z;
+            mouseState.current.y = mouseState.current.w;
+        };
+        const handlePointerUp = (e: PointerEvent) => {
+            canvas.releasePointerCapture(e.pointerId);
+            mouseState.current.z = 0;
+            mouseState.current.w = 0;
+        };
+
+        canvas.addEventListener('pointermove', handlePointerMove);
+        canvas.addEventListener('pointerdown', handlePointerDown);
+        canvas.addEventListener('pointerup', handlePointerUp);
+        canvas.addEventListener('pointercancel', handlePointerUp);
+        return () => {
+            canvas.removeEventListener('pointermove', handlePointerMove);
+            canvas.removeEventListener('pointerdown', handlePointerDown);
+            canvas.removeEventListener('pointerup', handlePointerUp);
+            canvas.removeEventListener('pointercancel', handlePointerUp);
+        };
+    }, [canvasRef]);
 
     useEffect(() => {
         loadCanvasKit()
@@ -164,11 +204,27 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                     const skcanvas = surface.getCanvas();
                     const paint = new canvasKit.Paint();
                     const currentTime = (Date.now() - startTime) / 1000;
-                    const uniforms = new Float32Array([
-                        currentTime,
-                        canvas.width,
-                        canvas.height
-                    ]);
+                    
+                    const numUniforms = effect.getUniformCount();
+                    const uniformData = new Float32Array(effect.getUniformFloatCount());
+
+                    for (let i = 0; i < numUniforms; i++) {
+                        const name = effect.getUniformName(i);
+                        const uniform = effect.getUniform(i);
+                        const slot = uniform.slot;
+                        
+                        if (name === 'iTime') {
+                            uniformData[slot] = currentTime;
+                        } else if (name === 'iResolution') {
+                            uniformData[slot] = canvas.width;
+                            uniformData[slot + 1] = canvas.height;
+                        } else if (name === 'iMouse') {
+                            uniformData[slot] = mouseState.current.x;
+                            uniformData[slot + 1] = mouseState.current.y;
+                            uniformData[slot + 2] = mouseState.current.z;
+                            uniformData[slot + 3] = mouseState.current.w;
+                        }
+                    }
 
                     // Clean up previous shader before creating new one
                     if (shader) {
@@ -176,7 +232,7 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                         shader = null;
                     }
 
-                    shader = effect.makeShader(uniforms);
+                    shader = effect.makeShader(uniformData);
                     paint.setShader(shader);
 
                     skcanvas.clear(canvasKit.WHITE);
@@ -224,7 +280,7 @@ function ShaderRenderer({ code, canvasRef }: { code: string, canvasRef: React.Re
                 ref={canvasRef}
                 width={800}
                 height={600}
-                className="max-w-full max-h-full"
+                className="max-w-full max-h-full touch-none"
             />
             {error && (
                 <div className="absolute top-20 left-4 right-4 bg-red-500 text-white p-4 rounded-lg font-mono text-sm z-50 shadow-lg whitespace-pre-wrap max-h-96 overflow-y-auto">
