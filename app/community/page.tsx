@@ -203,43 +203,69 @@ export default function CommunityPage() {
         else setLoading(true);
 
         try {
-            const q = isLoadMore && lastDoc
-                ? query(collection(db, 'shaders'), orderBy('likes', 'desc'), startAfter(lastDoc), limit(6))
-                : query(collection(db, 'shaders'), orderBy('likes', 'desc'), limit(6));
+            let currentLastDoc = isLoadMore ? lastDoc : null;
+            const targetCount = 3; // Fetch exactly 3 shaders
+            const newShadersData: ShaderDoc[] = [];
+            let moreAvailable = true;
 
-            const querySnapshot = await getDocs(q);
-            
-            if (querySnapshot.empty) {
-                setHasMore(false);
-                return;
-            }
-
-            setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-            
-            const shadersData: ShaderDoc[] = [];
             const userLikes = new Set(likedIds);
-            
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.isPublic || data.title) {
-                    shadersData.push({ id: doc.id, ...data } as ShaderDoc);
-                    if (user && data.likedBy && data.likedBy.includes(user.uid)) {
-                        userLikes.add(doc.id);
+
+            while (newShadersData.length < targetCount && moreAvailable) {
+                const fetchCount = 15; // Fetch larger batches to reduce roundtrips
+                
+                const q = currentLastDoc
+                    ? query(collection(db, 'shaders'), orderBy('likes', 'desc'), startAfter(currentLastDoc), limit(fetchCount))
+                    : query(collection(db, 'shaders'), orderBy('likes', 'desc'), limit(fetchCount));
+
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    moreAvailable = false;
+                    break;
+                }
+                
+                let batchHasMore = querySnapshot.docs.length === fetchCount;
+
+                for (const doc of querySnapshot.docs) {
+                    currentLastDoc = doc; // Advance cursor to the doc we are currently looking at
+                    const data = doc.data();
+                    
+                    if (data.isPublic || data.title) {
+                        newShadersData.push({ id: doc.id, ...data } as ShaderDoc);
+                        if (user && data.likedBy && data.likedBy.includes(user.uid)) {
+                            userLikes.add(doc.id);
+                        }
+                    }
+                    
+                    if (newShadersData.length >= targetCount) {
+                        break; // Stop processing this batch if we reached our target
                     }
                 }
-            });
 
+                if (newShadersData.length >= targetCount) {
+                    moreAvailable = true;
+                    break;
+                } else if (!batchHasMore) {
+                    moreAvailable = false;
+                    break;
+                }
+            }
+
+            setLastDoc(currentLastDoc);
+            
             if (isLoadMore) {
-                setShaders(prev => [...prev, ...shadersData]);
+                setShaders(prev => {
+                    const existingIds = new Set(prev.map(s => s.id));
+                    const uniqueNew = newShadersData.filter(s => !existingIds.has(s.id));
+                    return [...prev, ...uniqueNew];
+                });
             } else {
-                setShaders(shadersData);
+                setShaders(newShadersData);
             }
             
             setLikedIds(userLikes);
+            setHasMore(moreAvailable);
             
-            if (querySnapshot.docs.length < 6) {
-                setHasMore(false);
-            }
         } catch (err) {
             console.error('Error fetching shaders:', err);
         } finally {
