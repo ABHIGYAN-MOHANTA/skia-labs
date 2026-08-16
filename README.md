@@ -10,11 +10,20 @@ Skia Labs makes shader experimentation feel *creative, smooth, and joyful*. ✨
 <table>
   <tr>
     <td>
-      <img src="./pics/pic1.png" width="400">
+      <img src="./pics/pic1.avif" width="400">
     </td>
     <td style="width: 2px; background-color: #ccc;"></td>
     <td>
-      <img src="./pics/pic2.png" width="400">
+      <img src="./pics/pic2.avif" width="400">
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <img src="./pics/pic3.avif" width="400">
+    </td>
+    <td style="width: 2px; background-color: #ccc;"></td>
+    <td>
+      <img src="./pics/pic4.avif" width="400">
     </td>
   </tr>
 </table>
