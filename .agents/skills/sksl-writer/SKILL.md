@@ -1,5 +1,5 @@
 ---
-name: sksl-shader-writer
+name: sksl-writer
 description: Write SKSL (Skia Shading Language) shaders for the Skia Labs playground. Use this skill when asked to create, debug, or modify procedural shaders, animations, or fragment shaders.
 ---
 

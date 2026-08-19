@@ -272,6 +272,16 @@ function ShaderPreview({ code }: { code: string }) {
 }
 
 export default function ExamplesPage() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigator.clipboard.writeText('npx skills add abhigyan-mohanta/sksl-writer');
+    setCopied(true);
+    posthog.capture('button_clicked', { button_name: 'Copy Agent Skill - Examples' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-8 pt-24 sm:p-12 sm:pt-28">
       <Navbar />
@@ -279,10 +289,30 @@ export default function ExamplesPage() {
         <div className="flex flex-col-reverse sm:flex-row justify-between items-start sm:items-center gap-6 sm:gap-0 mb-12">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight mb-2">Shader Gallery</h2>
-              <p className="text-zinc-500 dark:text-zinc-400">
-                Explore these example shaders to get started, or <a href="/sksl-shader-writer.zip" download className="text-purple-500 hover:text-purple-400 underline transition-colors" onClick={() => posthog.capture('button_clicked', { button_name: 'Download Agent Skill - Examples' })}>download the Agent Skill</a> to have AI write them for you!
-              </p>
+              <h2 className="text-3xl font-bold tracking-tight mb-4">Shader Gallery</h2>
+              <div className="text-zinc-500 dark:text-zinc-400 space-y-4">
+                <p>Explore these example shaders to get started, or have AI write them for you using the Agent Skill:</p>
+                <div 
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-3 px-4 py-2 bg-white/50 dark:bg-black/40 backdrop-blur-md border border-zinc-200 dark:border-white/10 rounded-full cursor-pointer hover:bg-white dark:hover:bg-black/60 hover:border-purple-400/50 transition-all duration-300 group shadow-sm"
+                >
+                  <div className="text-zinc-500 dark:text-zinc-400 font-mono text-sm">
+                    <span className="opacity-50 select-none mr-2">$</span>
+                    <span className="text-zinc-800 dark:text-zinc-100">npx skills add abhigyan-mohanta/sksl-writer</span>
+                  </div>
+                  <div className="p-1.5 bg-zinc-100 dark:bg-white/10 rounded-md group-hover:bg-zinc-200 dark:group-hover:bg-white/20 transition-colors">
+                    {copied ? (
+                      <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <Link href="/" onClick={() => posthog.capture('button_clicked', { button_name: 'Back to Home - Examples' })} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors whitespace-nowrap">

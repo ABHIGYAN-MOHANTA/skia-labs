@@ -189,6 +189,15 @@ function HeroShaderBackground({ code }: { code: string }) {
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigator.clipboard.writeText('npx skills add abhigyan-mohanta/sksl-writer');
+    setCopied(true);
+    posthog.capture('button_clicked', { button_name: 'Copy Agent Skill - Hero' });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     loadCanvasKit()
@@ -240,39 +249,51 @@ export default function Home() {
                 App looking bland? Want animations, but tired of massive Lottie files tanking your performance? Stop choking your app with bloated JSONs. Skia-powered shaders run at 60fps, weigh nothing, and look incredible. Build, test, and tweak SKSL right here, then drop it directly into your React Native, Flutter, or even Native Mobile app.
               </p>
 
-              <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[340px] sm:max-w-none mx-auto">
+              <div className="grid grid-cols-1 sm:flex sm:flex-row gap-3 sm:gap-6 justify-center items-stretch sm:items-center pt-8 w-full max-w-[340px] sm:max-w-none mx-auto">
                 <Link
                   href="/editor"
                   onClick={() => posthog.capture('button_clicked', { button_name: 'Launch Editor - Hero' })}
-                  className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(236,72,153,0.5)] hover:shadow-[0_0_30px_-5px_rgba(236,72,153,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
+                  className="w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(236,72,153,0.5)] hover:shadow-[0_0_30px_-5px_rgba(236,72,153,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
                 >
                   Launch Editor
                 </Link>
                 <Link
                   href="/community"
                   onClick={() => posthog.capture('button_clicked', { button_name: 'Community - Hero' })}
-                  className="col-span-2 sm:col-auto w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
+                  className="w-full sm:w-auto text-center px-8 py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(6,182,212,0.5)] hover:shadow-[0_0_30px_-5px_rgba(6,182,212,0.8)] hover:scale-[1.02] transition-all duration-300 z-30"
                 >
                   Community
                 </Link>
                 <Link
                   href="/examples"
                   onClick={() => posthog.capture('button_clicked', { button_name: 'View Examples - Hero' })}
-                  className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.8)] hover:scale-[1.02] transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
+                  className="w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] hover:shadow-[0_0_30px_-5px_rgba(99,102,241,0.8)] hover:scale-[1.02] transition-all duration-300 z-30 text-sm sm:text-base flex items-center justify-center"
                 >
                   <span className="hidden sm:inline mr-1">View</span> Examples
                 </Link>
-                <a
-                  href="/sksl-shader-writer.zip"
-                  download
-                  onClick={() => posthog.capture('button_clicked', { button_name: 'Download Agent Skill - Hero' })}
-                  className="col-span-1 sm:col-auto w-full sm:w-auto text-center px-2 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-fuchsia-600 to-rose-500 text-white font-semibold rounded-full shadow-[0_0_30px_-5px_rgba(217,70,239,0.5)] hover:shadow-[0_0_30px_-5px_rgba(217,70,239,0.8)] hover:scale-[1.02] transition-all duration-300 z-30 flex items-center justify-center gap-1.5 text-[13px] sm:text-base"
+              </div>
+
+              <div className="flex justify-center mt-6">
+                <div 
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-3 px-5 py-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full cursor-pointer hover:bg-black/60 hover:border-purple-500/50 transition-all duration-300 group z-30 shadow-lg"
                 >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 opacity-80 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span><span className="hidden sm:inline">Download </span>Agent Skill</span>
-                </a>
+                  <div className="text-zinc-400 font-mono text-sm sm:text-base">
+                    <span className="opacity-50 select-none mr-2">$</span>
+                    <span className="text-zinc-100">npx skills add abhigyan-mohanta/sksl-writer</span>
+                  </div>
+                  <div className="p-1.5 bg-white/10 rounded-md group-hover:bg-white/20 transition-colors">
+                    {copied ? (
+                      <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

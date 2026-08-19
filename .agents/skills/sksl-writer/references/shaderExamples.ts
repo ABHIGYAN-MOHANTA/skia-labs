@@ -1,12 +1,78 @@
 export type ShaderExample = {
-  title: string;
-  code: string;
+    title: string;
+    code: string;
+    tag?: 'Simple' | 'Intermediate' | 'Advanced' | 'Interactive';
 };
 
 export const shaderExamples: ShaderExample[] = [
-  {
-    title: 'Color Waves',
-    code: `// kind=shader
+    {
+        title: 'Interactive Mouse',
+        tag: 'Interactive',
+        code: `// kind=shader
+
+uniform float iTime;
+uniform float2 iResolution;
+uniform float4 iMouse;
+
+half4 main(float2 fragCoord) {
+
+    // Normalize coordinates
+    float2 uv =
+        fragCoord / iResolution.xy;
+
+    float2 mouseUv =
+        iMouse.xy / iResolution.xy;
+
+
+    // Correct for non-square canvas
+    float aspect =
+        iResolution.x / iResolution.y;
+
+    uv.x *= aspect;
+    mouseUv.x *= aspect;
+
+
+    // Distance from pixel to mouse
+    float dist =
+        distance(
+            uv,
+            mouseUv
+        );
+
+
+    // Glowing circle
+    float circle =
+        0.08 / max(dist, 0.001);
+
+
+    // Background
+    float3 bg =
+        float3(
+            uv.x * 0.15,
+            uv.y * 0.15,
+            0.2
+        );
+
+
+    // Mouse color
+    float3 mouseGlow =
+        iMouse.z > 0.0
+        ?
+        float3(circle, 0.0, 0.0)
+        :
+        float3(0.0, 0.2, circle);
+
+
+    return half4(
+        bg + mouseGlow,
+        1.0
+    );
+}`
+    },
+    {
+        title: 'Color Waves',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -16,10 +82,11 @@ half4 main(float2 fragCoord) {
     col *= 0.6;
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Pattern Gradient',
-    code: `// kind=shader
+    },
+    {
+        title: 'Pattern Gradient',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -32,10 +99,11 @@ half4 main(float2 fragCoord) {
     col *= 0.5;
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Psychedelic Tunnel',
-    code: `// kind=shader
+    },
+    {
+        title: 'Psychedelic Tunnel',
+        tag: 'Simple',
+        code: `// kind=shader
 // Skia Labs provides iTime (seconds) and iResolution (width,height); keep these uniform.
 uniform float iTime;
 uniform float2 iResolution;
@@ -58,10 +126,11 @@ half4 main(float2 fragCoord) {
 
     return half4(col, 1.0);
 }`
-  },
-  {
-    title: 'Cloudy Sky',
-    code: `// kind=shader
+    },
+    {
+        title: 'Cloudy Sky',
+        tag: 'Intermediate',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -130,10 +199,11 @@ half4 main(float2 fragCoord) {
     return half4(col, 1.0);
 }
 `
-  },
-  {
-    title: 'Hyper Tunnel',
-    code: `// kind=shader
+    },
+    {
+        title: 'Hyper Tunnel',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1006,168 +1076,11 @@ half4 main(
     );
 }
 `
-  },
-  {
-    title: 'Desert Dunes',
-    code: `// kind=shader
-uniform float iTime;
-uniform float2 iResolution;
-
-// --- utils ---
-float2 rot(float2 p, float a) {
-    float c = cos(a), s = sin(a);
-    return float2(p.x*c - p.y*s, p.x*s + p.y*c);
-}
-
-float hash21(float2 p) {
-    return fract(sin(dot(p, float2(127.1,311.7))) * 43758.5453);
-}
-
-float noise(float2 p) {
-    float2 i = floor(p);
-    float2 f = fract(p);
-    f = f*f*(3.0 - 2.0*f);
-    float a = hash21(i);
-    float b = hash21(i + float2(1.0,0.0));
-    float c = hash21(i + float2(0.0,1.0));
-    float d = hash21(i + float2(1.0,1.0));
-    return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
-}
-
-float fbm(float2 p) {
-    float v = 0.0;
-    float amp = 0.55;
-    p *= 0.8;
-    for (int i = 0; i < 5; i++) {
-        v += noise(p) * amp;
-        p *= 2.0;
-        amp *= 0.5;
-    }
-    return v;
-}
-
-float ridge(float2 p) {
-    float v = fbm(p * 2.0);
-    v += fbm(p * 5.7) * 0.5;
-    return 1.0 - abs(2.0 * fract(v) - 1.0);
-}
-
-float haze(float dist, float height) {
-    float f = exp(-dist * 0.12) * smoothstep(-1.2, 0.8, height);
-    return clamp(1.0 - f, 0.0, 1.0);
-}
-
-// --- main ---
-half4 main(float2 fragCoord) {
-
-    float2 uv = fragCoord / iResolution.xy;
-    float aspect = iResolution.x / iResolution.y;
-
-    float2 p = uv*2.0 - 1.0;
-    p.x *= aspect;
-
-    float t = iTime * 0.06;
-
-    // === BRIGHT SKY ===
-    float3 skyTop = float3(0.22,0.42,0.75);   // brighter blue
-    float3 skyMid = float3(1.00,0.76,0.45);   // bright peach
-    float skyBlend = smoothstep(1.0,-0.2,p.y);
-    float3 col = mix(skyTop, skyMid, skyBlend) * 1.25;  // boosted brightness
-
-    // === STRONGER SUN ===
-    float2 sunPos = float2(0.45,-0.15);
-    sunPos.x *= aspect;
-    float2 sunUV = p - sunPos;
-    float sunDist = length(sunUV);
-    float sunGlow = exp(-sunDist * 5.0);
-    col += float3(1.6,1.35,1.1) * sunGlow;   // brighter sun
-
-    // === SOFT HOT RAYS ===
-    float ray = max(0.0, 0.35 - abs(sunUV.y)*0.3);
-    col += float3(1.3,1.1,0.8) * ray * 0.12;
-
-    // === DUNE LAYERS (brightened) ===
-    const int LAYERS = 5;
-
-    float scales[5];
-    scales[0]=0.6; scales[1]=1.0; scales[2]=1.8; scales[3]=3.2; scales[4]=6.0;
-
-    float offsets[5];
-    offsets[0]=0.4; offsets[1]=0.05; offsets[2]=-0.1; offsets[3]=-0.45; offsets[4]=-0.8;
-
-    float speeds[5];
-    speeds[0]=0.02; speeds[1]=0.06; speeds[2]=0.12; speeds[3]=0.22; speeds[4]=0.35;
-
-    float amps[5];
-    amps[0]=0.20; amps[1]=0.42; amps[2]=0.70; amps[3]=0.95; amps[4]=1.45;
-
-    float3 dunes = float3(0.0);
-    float totalDepth = 0.0;
-
-    for (int i = 0; i < LAYERS; i++) {
-        float s = scales[i];
-        float yOff = offsets[i];
-        float sp = speeds[i];
-        float amp = amps[i];
-
-        float2 coord = (p + float2(t*sp*(0.5+float(i)*0.12),0.0)) * float2(s, s*0.6);
-        coord = rot(coord, 0.12 * float(i));
-
-        float base = fbm(coord * 0.8) * 0.8;
-        float ridg = ridge(coord * 4.0) * 0.18;
-        float height = yOff + base * amp + ridg;
-
-        float mask = smoothstep(height - 0.12, height + 0.08, -p.y);
-
-        float depth = float(i)/float(LAYERS-1);
-        float fog = mix(1.0,0.35,depth);
-
-        float3 sandBase = float3(1.10,0.92,0.67);   // brighter sand
-        float3 sandShade = float3(0.55,0.42,0.28);  // lighter shadows
-
-        float lit = 0.35 + 0.65 * clamp(dot(normalize(float3(0.0,1.0,0.1)), 
-                                        normalize(float3(sunPos.xy,-0.8))),
-                                        0.0, 1.0);
-
-        float3 layerColor = mix(sandShade, sandBase, lit);
-
-        float crest = smoothstep(0.02,0.18,ridg);
-        layerColor += crest * float3(1.2,1.0,0.75) * 0.18;
-
-        dunes += layerColor * mask * fog;
-        totalDepth += mask * fog;
-    }
-
-    if (totalDepth > 0.0) dunes /= totalDepth;
-
-    // bright horizon blend
-    float horizonFog = smoothstep(-0.4,0.3,p.y);
-    float duneMix = clamp(1.0 - horizonFog*0.05, 0.0, 1.0);
-
-    float3 scene = mix(col, dunes, duneMix);
-
-    // add subtle sparkle
-    float2 glintUV = p * float2(12.0,6.0) + float2(t*0.8,0.0);
-    float g = fbm(glintUV)*0.5 + ridge(glintUV*3.0)*0.35;
-    scene += float3(1.0,0.9,0.7) * pow(clamp(g,0.0,1.0), 3.0) * 0.08;
-
-    // gentle tone mapping (brighter)
-    scene = pow(scene, float3(0.85));
-
-    // reduce vignette darkness drastically
-    float vign = smoothstep(1.45, 0.55, length(p));
-    scene *= (0.85 + 0.15 * vign);
-
-    // tiny grain
-    float grain = (hash21(fragCoord.xy*0.5)-0.5)*0.02;
-    scene += grain;
-
-    return half4(clamp(scene,0.0,1.0), 1.0);
-}`
-  },
-  {
-    title: 'Starfield',
-    code: `// kind=shader
+    },
+    {
+        title: 'Starfield',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1497,10 +1410,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Fractal Tunnel',
-    code: `// kind=shader
+    },
+    {
+        title: 'Fractal Tunnel',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -1887,10 +1801,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Light Speed',
-    code: `// kind=shader
+    },
+    {
+        title: 'Light Speed',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -2482,10 +2397,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Glass Cubes',
-    code: `// kind=shader
+    },
+    {
+        title: 'Glass Cubes',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -2880,10 +2796,11 @@ half4 main(float2 fragCoord) {
     );
 }
 `
-  },
-  {
-    title: 'Night Drive',
-    code: `// kind=shader
+    },
+    {
+        title: 'Night Drive',
+        tag: 'Advanced',
+        code: `// kind=shader
 uniform float iTime;
 uniform float2 iResolution;
 
@@ -4463,5 +4380,137 @@ half4 main(
     );
 }
 `
-  }
+    },
+    {
+        title: 'Keyboard Test',
+        tag: 'Interactive',
+        code: `// kind=shader
+
+/* 
+ * NOTE ON MOBILE (REACT NATIVE, FLUTTER, NATIVE) USAGE:
+ * This specific shader uses a raw 256x3 byte array texture (iKeyboard)
+ * updated continuously by global DOM keyboard events (window.addEventListener). 
+ * 
+ * It will NOT work "out-of-the-box" in mobile apps because:
+ * 1. Mobile devices lack a global physical keyboard listener by default.
+ * 2. Uploading a dynamic CPU byte array to a GPU Image texture 
+ *    every single frame is highly inefficient on mobile UI frameworks.
+ *
+ * For mobile interactions, use touch gesture handlers (like GestureDetector)
+ * to track touches and pass them to your shader as standard uniform floats!
+ */
+
+uniform float iTime;
+uniform float2 iResolution;
+uniform shader iKeyboard;
+
+// Helper to check if a specific key is currently being held down
+float keyHeld(float keycode) {
+    // Row 0 is the "held down" state
+    return iKeyboard.eval(float2(keycode + 0.5, 0.5)).r;
+}
+
+// Math to draw a rounded rectangle (a keyboard key)
+float sdRoundRect(float2 p, float2 b, float r) {
+    float2 d = abs(p) - b + float2(r);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
+}
+
+// Helper to get the correct keycode without using arrays
+float getKeyCode(int row, int col) {
+    if (row == 0) { // Top Row (Q to P)
+        if (col == 0) return 81.0;
+        if (col == 1) return 87.0;
+        if (col == 2) return 69.0;
+        if (col == 3) return 82.0;
+        if (col == 4) return 84.0;
+        if (col == 5) return 89.0;
+        if (col == 6) return 85.0;
+        if (col == 7) return 73.0;
+        if (col == 8) return 79.0;
+        if (col == 9) return 80.0;
+    } else if (row == 1) { // Middle Row (A to L)
+        if (col == 0) return 65.0;
+        if (col == 1) return 83.0;
+        if (col == 2) return 68.0;
+        if (col == 3) return 70.0;
+        if (col == 4) return 71.0;
+        if (col == 5) return 72.0;
+        if (col == 6) return 74.0;
+        if (col == 7) return 75.0;
+        if (col == 8) return 76.0;
+    } else if (row == 2) { // Bottom Row (Z to M)
+        if (col == 0) return 90.0;
+        if (col == 1) return 88.0;
+        if (col == 2) return 67.0;
+        if (col == 3) return 86.0;
+        if (col == 4) return 66.0;
+        if (col == 5) return 78.0;
+        if (col == 6) return 77.0;
+    }
+    return -1.0;
+}
+
+half4 main(float2 fragCoord) {
+    // Normalize coordinates and center them
+    float2 uv = fragCoord / iResolution.xy;
+    float2 p = uv - float2(0.5);
+    p.x *= iResolution.x / iResolution.y; // Correct aspect ratio
+    
+    float3 col = float3(0.1, 0.1, 0.15); // Dark background
+    
+    float2 boxSize = float2(0.035);
+    float spacing = 0.09;
+    float cornerRadius = 0.008;
+    
+    // 1. Draw Top Row (10 keys)
+    for (int i = 0; i < 10; ++i) {
+        float2 pos = float2(-4.5 * spacing + float(i) * spacing, -0.12);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(0, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state); 
+        }
+    }
+    
+    // 2. Draw Middle Row (9 keys)
+    for (int i = 0; i < 9; ++i) {
+        float2 pos = float2(-4.0 * spacing + float(i) * spacing, 0.0);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(1, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+    
+    // 3. Draw Bottom Row (7 keys)
+    for (int i = 0; i < 7; ++i) {
+        float2 pos = float2(-3.0 * spacing + float(i) * spacing, 0.12);
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(getKeyCode(2, i));
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+
+    // 4. Draw Arrow Keys (Inverted T shape - Shifted Right to avoid M)
+    for (int i = 0; i < 4; ++i) {
+        float keycode = 0.0;
+        float2 pos = float2(0.0);
+        
+        if (i == 0)      { keycode = 38.0; pos = float2(5.0 * spacing, 0.12); } // Up
+        else if (i == 1) { keycode = 37.0; pos = float2(4.0 * spacing, 0.24); } // Left
+        else if (i == 2) { keycode = 40.0; pos = float2(5.0 * spacing, 0.24); } // Down
+        else if (i == 3) { keycode = 39.0; pos = float2(6.0 * spacing, 0.24); } // Right
+        
+        float dist = sdRoundRect(p - pos, boxSize, cornerRadius);
+        if (dist < 0.0) {
+            float state = keyHeld(keycode);
+            col = mix(float3(0.3), float3(0.1, 0.9, 0.2), state);
+        }
+    }
+    
+    return half4(col, 1.0);
+}`
+    }
 ];
